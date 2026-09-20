@@ -210,12 +210,6 @@ public class MainViewModel : ViewModelBase, IDisposable
 
     #region Properties
 
-    public bool IsMockMode
-    {
-        get => _isMockMode;
-        set => SetProperty(ref _isMockMode, value);
-    }
-
     public bool IsScanning
     {
         get => _isScanning;
