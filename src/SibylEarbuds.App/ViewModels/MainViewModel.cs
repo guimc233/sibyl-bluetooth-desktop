@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Windows;
+using System.Windows.Input;
 using SibylEarbuds.App.Bluetooth;
 using SibylEarbuds.Core.Models;
 using SibylEarbuds.Core.Protocol;
