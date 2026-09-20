@@ -105,6 +105,15 @@ public class MainViewModel : ViewModelBase, IDisposable
     public ICommand SwitchTransportCommand { get; }
     public ICommand PlaySoundCommand { get; }
     public ICommand StopSoundCommand { get; }
+    public ICommand SwitchNavCommand { get; }
+    public ICommand ClearLogsCommand { get; }
+
+    private int _selectedNavIndex = 0;
+    public int SelectedNavIndex
+    {
+        get => _selectedNavIndex;
+        set => SetProperty(ref _selectedNavIndex, value);
+    }
 
     public MainViewModel()
     {
@@ -149,6 +158,18 @@ public class MainViewModel : ViewModelBase, IDisposable
             }
         });
         SwitchTransportCommand = new RelayCommand(ToggleMockMode);
+        SwitchNavCommand = new RelayCommand(param =>
+        {
+            if (param is string str && int.TryParse(str, out int idx))
+            {
+                SelectedNavIndex = idx;
+            }
+        });
+        ClearLogsCommand = new RelayCommand(() =>
+        {
+            LogLines.Clear();
+            AddLog("[SYS] 日志终端已清空");
+        });
 
         _selectedSound = BuiltInSounds.FirstOrDefault();
         PlaySoundCommand = new RelayCommand(param =>

@@ -99,3 +99,65 @@ public class BatteryToColorConverter : IValueConverter
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
 }
+
+public class EqualToIntToVisibilityConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is int cur && parameter is string p && int.TryParse(p, out int target))
+        {
+            return cur == target ? Visibility.Visible : Visibility.Collapsed;
+        }
+        return Visibility.Collapsed;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
+}
+
+public class EqualToIntToBrushConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is int cur && parameter is string p && int.TryParse(p, out int target))
+        {
+            if (cur == target)
+            {
+                return new SolidColorBrush(Color.FromArgb(40, 255, 255, 255)); // WinUI Active Item Background
+            }
+        }
+        return Brushes.Transparent;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
+}
+
+public class EqualToIntToForegroundConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is int cur && parameter is string p && int.TryParse(p, out int target))
+        {
+            if (cur == target)
+            {
+                return Brushes.White;
+            }
+        }
+        return new SolidColorBrush(Color.FromRgb(161, 161, 170)); // #A1A1AA
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
+}
+
+public class EqualToIntToIndicatorVisibilityConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is int cur && parameter is string p && int.TryParse(p, out int target))
+        {
+            return cur == target ? Visibility.Visible : Visibility.Hidden;
+        }
+        return Visibility.Hidden;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
+}
