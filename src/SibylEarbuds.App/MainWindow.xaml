@@ -156,12 +156,9 @@
                                 <TextBlock Text="{Binding CurrentProfile.ChipDescription}" FontSize="11" Foreground="#38BDF8" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                             </DockPanel>
                             <UniformGrid Columns="3">
-                                <controls:BatteryRingControl Battery="{Binding LeftBattery}" Label="左耳 (L)" IsCharging="{Binding IsLeftCharging}" 
-                                                             ImageSource="Resources/Images/ear_left.png"/>
-                                <controls:BatteryRingControl Battery="{Binding RightBattery}" Label="右耳 (R)" IsCharging="{Binding IsRightCharging}" 
-                                                             ImageSource="Resources/Images/ear_right.png"/>
-                                <controls:BatteryRingControl Battery="{Binding CaseBattery}" Label="充电盒" IsCharging="{Binding IsCaseCharging}" 
-                                                             ImageSource="Resources/Images/ear_box.png"/>
+                                <controls:EarbudVisualControl Battery="{Binding LeftBattery}" Label="左耳 (L)" IsCharging="{Binding IsLeftCharging}" IsRightSide="False"/>
+                                <controls:EarbudVisualControl Battery="{Binding RightBattery}" Label="右耳 (R)" IsCharging="{Binding IsRightCharging}" IsRightSide="True"/>
+                                <controls:EarbudVisualControl Battery="{Binding CaseBattery}" Label="充电盒" IsCharging="{Binding IsCaseCharging}" IsCaseMode="True"/>
                             </UniformGrid>
                         </StackPanel>
                     </Border>

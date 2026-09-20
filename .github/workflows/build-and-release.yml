@@ -45,14 +45,15 @@ jobs:
       - name: Run Unit Tests
         run: dotnet test tests/SibylEarbuds.Core.Tests/SibylEarbuds.Core.Tests.csproj -c Release --no-restore --verbosity normal
 
-      - name: Publish Windows x64 Single-File Executable
+      - name: Publish Windows x64 Single-File Executable (Self-Contained with Console)
         run: |
           dotnet publish src/SibylEarbuds.App/SibylEarbuds.App.csproj `
             -c Release `
             -r win-x64 `
-            --self-contained false `
+            --self-contained true `
             -p:PublishSingleFile=true `
             -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:EnableCompressionInSingleFile=true `
             -o ./publish_win64
 
       - name: Create Release Archive (ZIP)
