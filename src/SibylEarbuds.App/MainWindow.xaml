@@ -104,7 +104,7 @@
                             <TextBlock Text="未连接" FontSize="11" Foreground="White" FontWeight="SemiBold"/>
                         </Border>
                     </StackPanel>
-                    <TextBlock Text="{Binding FirmwareVersion, StringFormat='固件版本: {0}'}" FontSize="12" Foreground="#94A3B8"/>
+                    <TextBlock Text="{Binding FirmwareVersion, StringFormat='{}固件版本: {0}'}" FontSize="12" Foreground="#94A3B8"/>
                 </StackPanel>
             </StackPanel>
 
@@ -197,8 +197,8 @@
 
                             <!-- 寻找耳机 -->
                             <DockPanel Margin="0,0,0,10">
-                                <TextBlock Text="🔔 寻找耳机 (播放声音)" VerticalAlignment="Center"/>
-                                <Button Content="{Binding IsFindingEarphone, Converter={StaticResource BoolToVis}}" 
+                                <TextBlock Text="🔔 寻找耳机" VerticalAlignment="Center"/>
+                                <Button Content="发声寻找" 
                                         Command="{Binding ToggleFindEarphoneCommand}" Style="{StaticResource GhostButton}" HorizontalAlignment="Right"/>
                             </DockPanel>
 
@@ -237,61 +237,61 @@
                             <UniformGrid Columns="10" Height="200" Margin="0,10">
                                 <!-- 31Hz -->
                                 <StackPanel HorizontalAlignment="Center">
-                                    <TextBlock Text="{Binding EqBand0, StringFormat='{0}dB'}" FontSize="10" Foreground="#38BDF8" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding EqBand0, StringFormat={}{0}dB}" FontSize="10" Foreground="#38BDF8" HorizontalAlignment="Center"/>
                                     <Slider Value="{Binding EqBand0}" Minimum="-8" Maximum="8" Orientation="Vertical" Height="150" Margin="0,4"/>
                                     <TextBlock Text="31" FontSize="10" Foreground="#94A3B8" HorizontalAlignment="Center"/>
                                 </StackPanel>
                                 <!-- 62Hz -->
                                 <StackPanel HorizontalAlignment="Center">
-                                    <TextBlock Text="{Binding EqBand1, StringFormat='{0}dB'}" FontSize="10" Foreground="#38BDF8" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding EqBand1, StringFormat={}{0}dB}" FontSize="10" Foreground="#38BDF8" HorizontalAlignment="Center"/>
                                     <Slider Value="{Binding EqBand1}" Minimum="-8" Maximum="8" Orientation="Vertical" Height="150" Margin="0,4"/>
                                     <TextBlock Text="62" FontSize="10" Foreground="#94A3B8" HorizontalAlignment="Center"/>
                                 </StackPanel>
                                 <!-- 125Hz -->
                                 <StackPanel HorizontalAlignment="Center">
-                                    <TextBlock Text="{Binding EqBand2, StringFormat='{0}dB'}" FontSize="10" Foreground="#38BDF8" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding EqBand2, StringFormat={}{0}dB}" FontSize="10" Foreground="#38BDF8" HorizontalAlignment="Center"/>
                                     <Slider Value="{Binding EqBand2}" Minimum="-8" Maximum="8" Orientation="Vertical" Height="150" Margin="0,4"/>
                                     <TextBlock Text="125" FontSize="10" Foreground="#94A3B8" HorizontalAlignment="Center"/>
                                 </StackPanel>
                                 <!-- 250Hz -->
                                 <StackPanel HorizontalAlignment="Center">
-                                    <TextBlock Text="{Binding EqBand3, StringFormat='{0}dB'}" FontSize="10" Foreground="#38BDF8" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding EqBand3, StringFormat={}{0}dB}" FontSize="10" Foreground="#38BDF8" HorizontalAlignment="Center"/>
                                     <Slider Value="{Binding EqBand3}" Minimum="-8" Maximum="8" Orientation="Vertical" Height="150" Margin="0,4"/>
                                     <TextBlock Text="250" FontSize="10" Foreground="#94A3B8" HorizontalAlignment="Center"/>
                                 </StackPanel>
                                 <!-- 500Hz -->
                                 <StackPanel HorizontalAlignment="Center">
-                                    <TextBlock Text="{Binding EqBand4, StringFormat='{0}dB'}" FontSize="10" Foreground="#38BDF8" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding EqBand4, StringFormat={}{0}dB}" FontSize="10" Foreground="#38BDF8" HorizontalAlignment="Center"/>
                                     <Slider Value="{Binding EqBand4}" Minimum="-8" Maximum="8" Orientation="Vertical" Height="150" Margin="0,4"/>
                                     <TextBlock Text="500" FontSize="10" Foreground="#94A3B8" HorizontalAlignment="Center"/>
                                 </StackPanel>
                                 <!-- 1kHz -->
                                 <StackPanel HorizontalAlignment="Center">
-                                    <TextBlock Text="{Binding EqBand5, StringFormat='{0}dB'}" FontSize="10" Foreground="#38BDF8" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding EqBand5, StringFormat={}{0}dB}" FontSize="10" Foreground="#38BDF8" HorizontalAlignment="Center"/>
                                     <Slider Value="{Binding EqBand5}" Minimum="-8" Maximum="8" Orientation="Vertical" Height="150" Margin="0,4"/>
                                     <TextBlock Text="1k" FontSize="10" Foreground="#94A3B8" HorizontalAlignment="Center"/>
                                 </StackPanel>
                                 <!-- 2kHz -->
                                 <StackPanel HorizontalAlignment="Center">
-                                    <TextBlock Text="{Binding EqBand6, StringFormat='{0}dB'}" FontSize="10" Foreground="#38BDF8" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding EqBand6, StringFormat={}{0}dB}" FontSize="10" Foreground="#38BDF8" HorizontalAlignment="Center"/>
                                     <Slider Value="{Binding EqBand6}" Minimum="-8" Maximum="8" Orientation="Vertical" Height="150" Margin="0,4"/>
                                     <TextBlock Text="2k" FontSize="10" Foreground="#94A3B8" HorizontalAlignment="Center"/>
                                 </StackPanel>
                                 <!-- 4kHz -->
                                 <StackPanel HorizontalAlignment="Center">
-                                    <TextBlock Text="{Binding EqBand7, StringFormat='{0}dB'}" FontSize="10" Foreground="#38BDF8" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding EqBand7, StringFormat={}{0}dB}" FontSize="10" Foreground="#38BDF8" HorizontalAlignment="Center"/>
                                     <Slider Value="{Binding EqBand7}" Minimum="-8" Maximum="8" Orientation="Vertical" Height="150" Margin="0,4"/>
                                     <TextBlock Text="4k" FontSize="10" Foreground="#94A3B8" HorizontalAlignment="Center"/>
                                 </StackPanel>
                                 <!-- 8kHz -->
                                 <StackPanel HorizontalAlignment="Center">
-                                    <TextBlock Text="{Binding EqBand8, StringFormat='{0}dB'}" FontSize="10" Foreground="#38BDF8" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding EqBand8, StringFormat={}{0}dB}" FontSize="10" Foreground="#38BDF8" HorizontalAlignment="Center"/>
                                     <Slider Value="{Binding EqBand8}" Minimum="-8" Maximum="8" Orientation="Vertical" Height="150" Margin="0,4"/>
                                     <TextBlock Text="8k" FontSize="10" Foreground="#94A3B8" HorizontalAlignment="Center"/>
                                 </StackPanel>
                                 <!-- 16kHz -->
                                 <StackPanel HorizontalAlignment="Center">
-                                    <TextBlock Text="{Binding EqBand9, StringFormat='{0}dB'}" FontSize="10" Foreground="#38BDF8" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding EqBand9, StringFormat={}{0}dB}" FontSize="10" Foreground="#38BDF8" HorizontalAlignment="Center"/>
                                     <Slider Value="{Binding EqBand9}" Minimum="-8" Maximum="8" Orientation="Vertical" Height="150" Margin="0,4"/>
                                     <TextBlock Text="16k" FontSize="10" Foreground="#94A3B8" HorizontalAlignment="Center"/>
                                 </StackPanel>
