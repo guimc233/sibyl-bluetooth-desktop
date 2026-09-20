@@ -115,6 +115,10 @@
                     <ComboBox ItemsSource="{Binding AllModelProfiles}" SelectedItem="{Binding CurrentProfile}" 
                               DisplayMemberPath="DisplayName" Width="180" Background="#1E293B" Foreground="White" Height="28"/>
                 </StackPanel>
+                <ComboBox ItemsSource="{Binding DiscoveredDevices}" SelectedItem="{Binding SelectedDevice}"
+                          DisplayMemberPath="Name" Width="170" Height="28" Margin="0,0,8,0"
+                          Background="#1E293B" Foreground="White" VerticalAlignment="Center"
+                          ToolTip="扫描到的蓝牙设备，选中后点击“连接耳机”"/>
                 <Button Content="切换模拟/真实模式" Command="{Binding SwitchTransportCommand}" 
                         Style="{StaticResource GhostButton}" Margin="0,0,8,0"/>
                 <Button Content="搜索设备" Command="{Binding ScanCommand}" 
@@ -206,6 +210,8 @@
                             <!-- 寻找耳机 -->
                             <DockPanel Margin="0,0,0,10">
                                 <TextBlock Text="🔔 寻找耳机" VerticalAlignment="Center"/>
+                                <TextBlock Text="响铃中…" Foreground="#34D399" FontSize="11" Margin="8,0,0,0" VerticalAlignment="Center"
+                                           Visibility="{Binding IsFindingEarphone, Converter={StaticResource BoolToVis}}"/>
                                 <Button Content="发声寻找" 
                                         Command="{Binding ToggleFindEarphoneCommand}" Style="{StaticResource GhostButton}" HorizontalAlignment="Right"/>
                             </DockPanel>
@@ -213,13 +219,22 @@
                             <!-- 定时关机 -->
                             <DockPanel>
                                 <TextBlock Text="⏱️ 定时自动关机" VerticalAlignment="Center"/>
-                                <ComboBox SelectedIndex="0" HorizontalAlignment="Right" Width="100" Background="#334155" Foreground="White">
-                                    <ComboBoxItem Content="不开启"/>
-                                    <ComboBoxItem Content="15 分钟"/>
-                                    <ComboBoxItem Content="30 分钟"/>
-                                    <ComboBoxItem Content="60 分钟"/>
-                                </ComboBox>
+                                <ComboBox ItemsSource="{Binding ShutdownOptions}" DisplayMemberPath="Display"
+                                          SelectedValuePath="Minutes" SelectedValue="{Binding SelectedShutdownMinutes}"
+                                          HorizontalAlignment="Right" Width="100" Background="#334155" Foreground="White"/>
                             </DockPanel>
+
+                            <!-- 设备维护 -->
+                            <Grid Margin="0,12,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Button Grid.Column="0" Content="恢复默认设置" Command="{Binding ResetDefaultsCommand}"
+                                        Style="{StaticResource GhostButton}" Margin="0,0,4,0"/>
+                                <Button Grid.Column="1" Content="恢复出厂设置" Command="{Binding FactoryResetCommand}"
+                                        Style="{StaticResource GhostButton}" Margin="4,0,0,0"/>
+                            </Grid>
                         </StackPanel>
                     </Border>
 
@@ -348,29 +363,21 @@
                                 <TextBlock Text="按键触控自定义" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10"/>
                                 <Grid Margin="0,0,0,6">
                                     <TextBlock Text="左耳双击:" VerticalAlignment="Center" FontSize="12"/>
-                                    <ComboBox SelectedIndex="1" HorizontalAlignment="Right" Width="120" Background="#334155" Foreground="White">
-                                        <ComboBoxItem Content="播放/暂停"/>
-                                        <ComboBoxItem Content="上一曲"/>
-                                        <ComboBoxItem Content="下一曲"/>
-                                        <ComboBoxItem Content="语音助手"/>
-                                    </ComboBox>
+                                    <ComboBox ItemsSource="{Binding KeyFunctionOptions}" DisplayMemberPath="Display"
+                                              SelectedValuePath="Value" SelectedValue="{Binding KeySettings.LeftDoubleTap}"
+                                              HorizontalAlignment="Right" Width="120" Background="#334155" Foreground="White"/>
                                 </Grid>
                                 <Grid Margin="0,0,0,6">
                                     <TextBlock Text="右耳双击:" VerticalAlignment="Center" FontSize="12"/>
-                                    <ComboBox SelectedIndex="2" HorizontalAlignment="Right" Width="120" Background="#334155" Foreground="White">
-                                        <ComboBoxItem Content="播放/暂停"/>
-                                        <ComboBoxItem Content="上一曲"/>
-                                        <ComboBoxItem Content="下一曲"/>
-                                        <ComboBoxItem Content="语音助手"/>
-                                    </ComboBox>
+                                    <ComboBox ItemsSource="{Binding KeyFunctionOptions}" DisplayMemberPath="Display"
+                                              SelectedValuePath="Value" SelectedValue="{Binding KeySettings.RightDoubleTap}"
+                                              HorizontalAlignment="Right" Width="120" Background="#334155" Foreground="White"/>
                                 </Grid>
                                 <Grid Margin="0,0,0,6">
                                     <TextBlock Text="左耳长按:" VerticalAlignment="Center" FontSize="12"/>
-                                    <ComboBox SelectedIndex="0" HorizontalAlignment="Right" Width="120" Background="#334155" Foreground="White">
-                                        <ComboBoxItem Content="ANC降噪切换"/>
-                                        <ComboBoxItem Content="游戏模式"/>
-                                        <ComboBoxItem Content="音量+"/>
-                                    </ComboBox>
+                                    <ComboBox ItemsSource="{Binding KeyFunctionOptions}" DisplayMemberPath="Display"
+                                              SelectedValuePath="Value" SelectedValue="{Binding KeySettings.LeftLongPress}"
+                                              HorizontalAlignment="Right" Width="120" Background="#334155" Foreground="White"/>
                                 </Grid>
                                 <Button Content="保存手势配置" Command="{Binding SaveKeySettingsCommand}" Style="{StaticResource GhostButton}" Margin="0,8,0,0"/>
                             </StackPanel>
@@ -381,9 +388,12 @@
                             <StackPanel>
                                 <TextBlock Text="RGB 炫彩灯效控制" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10"/>
                                 <UniformGrid Columns="3" Margin="0,0,0,10">
-                                    <RadioButton Content="常亮" GroupName="LightMode" Foreground="White"/>
-                                    <RadioButton Content="呼吸" IsChecked="True" GroupName="LightMode" Foreground="White"/>
-                                    <RadioButton Content="关闭" GroupName="LightMode" Foreground="White"/>
+                                    <RadioButton Content="常亮" GroupName="LightMode" Foreground="White"
+                                                 Command="{Binding SetLightModeCommand}" CommandParameter="1"/>
+                                    <RadioButton Content="呼吸" IsChecked="True" GroupName="LightMode" Foreground="White"
+                                                 Command="{Binding SetLightModeCommand}" CommandParameter="2"/>
+                                    <RadioButton Content="关闭" GroupName="LightMode" Foreground="White"
+                                                 Command="{Binding SetLightModeCommand}" CommandParameter="3"/>
                                 </UniformGrid>
                                 <DockPanel Margin="0,0,0,8">
                                     <TextBlock Text="呼吸速度 (0-7):" VerticalAlignment="Center" FontSize="12"/>

@@ -15,6 +15,7 @@ public class MainViewModel : ViewModelBase, IDisposable
     private bool _isMockMode = true; // 默认开启以保障开箱即用，可在UI一键切真实BLE
     private bool _isScanning;
     private DiscoveredBleDevice? _selectedDevice;
+    private string? _lastMatchedDeviceName;
 
     // 电池与设备状态
     private string _deviceName = "SIBYL Earbuds";
@@ -65,6 +66,29 @@ public class MainViewModel : ViewModelBase, IDisposable
     public ObservableCollection<DeviceCapability> AllModelProfiles { get; } = new(DeviceModelProfiles.GetAllProfiles());
     public ObservableCollection<BuiltInSoundInfo> BuiltInSounds { get; } = new(BuiltInSoundLibrary.Sounds);
 
+    // 下拉选项集合
+    public IReadOnlyList<ShutdownOption> ShutdownOptions { get; } =
+    [
+        new ShutdownOption("不开启", 0),
+        new ShutdownOption("15 分钟", 15),
+        new ShutdownOption("30 分钟", 30),
+        new ShutdownOption("60 分钟", 60)
+    ];
+
+    public IReadOnlyList<KeyFunctionOption> KeyFunctionOptions { get; } =
+    [
+        new KeyFunctionOption("无作用", KeyFunctionType.None),
+        new KeyFunctionOption("播放/暂停", KeyFunctionType.PlayPause),
+        new KeyFunctionOption("上一曲", KeyFunctionType.PreviousTrack),
+        new KeyFunctionOption("下一曲", KeyFunctionType.NextTrack),
+        new KeyFunctionOption("语音助手", KeyFunctionType.VoiceAssistant),
+        new KeyFunctionOption("音量+", KeyFunctionType.VolumeUp),
+        new KeyFunctionOption("音量-", KeyFunctionType.VolumeDown),
+        new KeyFunctionOption("游戏模式", KeyFunctionType.GameMode),
+        new KeyFunctionOption("ANC降噪切换", KeyFunctionType.AncToggle),
+        new KeyFunctionOption("EQ音效循环", KeyFunctionType.EqCycle)
+    ];
+
     // Commands
     public ICommand ScanCommand { get; }
     public ICommand ConnectCommand { get; }
@@ -77,6 +101,7 @@ public class MainViewModel : ViewModelBase, IDisposable
     public ICommand FactoryResetCommand { get; }
     public ICommand SaveKeySettingsCommand { get; }
     public ICommand ApplyEqPresetCommand { get; }
+    public ICommand SetLightModeCommand { get; }
     public ICommand SwitchTransportCommand { get; }
     public ICommand PlaySoundCommand { get; }
     public ICommand StopSoundCommand { get; }
@@ -113,6 +138,13 @@ public class MainViewModel : ViewModelBase, IDisposable
             if (param is EqConfiguration preset)
             {
                 SelectedEqPreset = preset;
+            }
+        });
+        SetLightModeCommand = new RelayCommand(param =>
+        {
+            if (param is string str && int.TryParse(str, out int lightModeInt))
+            {
+                LightMode = (LightModeType)lightModeInt;
             }
         });
         SwitchTransportCommand = new RelayCommand(ToggleMockMode);
@@ -454,6 +486,12 @@ public class MainViewModel : ViewModelBase, IDisposable
 
     public async Task ConnectAsync()
     {
+        if (SelectedDevice == null && !IsMockMode)
+        {
+            AddLog("[BLE-WARN] 请先点击“搜索设备”，并在下拉框中选择要连接的耳机");
+            return;
+        }
+
         string targetId = SelectedDevice?.Id ?? "MOCK-DEV-01";
         AddLog($"[BLE-CONNECT] 准备连接设备: {targetId}...");
         bool success = await _deviceService.ConnectAsync(targetId);
@@ -476,23 +514,23 @@ public class MainViewModel : ViewModelBase, IDisposable
 
     public async Task ToggleGameModeAsync()
     {
-        bool nextState = !IsGameMode;
-        IsGameMode = nextState;
-        await _deviceService.SetGameModeAsync(nextState);
+        // CheckBox 的双向绑定会先更新 IsGameMode，此处直接以最新状态为准，避免二次取反导致状态被弹回
+        await _deviceService.SetGameModeAsync(IsGameMode);
     }
 
     public async Task ToggleTouchLockAsync()
     {
-        bool nextState = !IsTouchDisabled;
-        IsTouchDisabled = nextState;
-        await _deviceService.SetTouchLockAsync(nextState);
+        await _deviceService.SetTouchLockAsync(IsTouchDisabled);
     }
 
     public async Task ToggleFindEarphoneAsync()
     {
         bool nextState = !IsFindingEarphone;
-        IsFindingEarphone = nextState;
-        await _deviceService.FindEarphonesAsync(nextState);
+        bool success = await _deviceService.FindEarphonesAsync(nextState);
+        if (success)
+        {
+            IsFindingEarphone = nextState;
+        }
     }
 
     private void ToggleMockMode()
@@ -501,7 +539,15 @@ public class MainViewModel : ViewModelBase, IDisposable
         IsMockMode = !IsMockMode;
         _deviceService = new EarbudDeviceService(TransportFactory.Create(IsMockMode));
         AttachServiceEvents();
+        DiscoveredDevices.Clear();
+        SelectedDevice = null;
+        _lastMatchedDeviceName = null;
         AddLog($"[MODE] 已切换到: {(IsMockMode ? "虚拟耳机演示模式" : "Windows 10/11 真实 WinRT BLE 模式")}");
+
+        if (IsMockMode)
+        {
+            _ = ConnectAsync();
+        }
     }
 
     private void AttachServiceEvents()
@@ -512,7 +558,12 @@ public class MainViewModel : ViewModelBase, IDisposable
             {
                 IsConnected = status.IsConnected;
                 DeviceName = status.DeviceName;
-                CurrentProfile = DeviceModelProfiles.MatchProfileByName(status.DeviceName);
+                // 仅在设备名称实际变化时自动匹配型号，避免覆盖用户在界面手动选择的型号
+                if (!string.Equals(_lastMatchedDeviceName, status.DeviceName, StringComparison.OrdinalIgnoreCase))
+                {
+                    _lastMatchedDeviceName = status.DeviceName;
+                    CurrentProfile = DeviceModelProfiles.MatchProfileByName(status.DeviceName);
+                }
                 LeftBattery = status.LeftBattery;
                 RightBattery = status.RightBattery;
                 CaseBattery = status.CaseBattery;
