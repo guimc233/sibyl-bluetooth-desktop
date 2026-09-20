@@ -18,6 +18,16 @@ public partial class BatteryRingControl : UserControl
         DependencyProperty.Register(nameof(IsCharging), typeof(bool), typeof(BatteryRingControl),
             new PropertyMetadata(false, OnChargingChanged));
 
+    public static readonly DependencyProperty ImageSourceProperty =
+        DependencyProperty.Register(nameof(ImageSource), typeof(ImageSource), typeof(BatteryRingControl),
+            new PropertyMetadata(null, OnImageSourceChanged));
+
+    public ImageSource? ImageSource
+    {
+        get => (ImageSource?)GetValue(ImageSourceProperty);
+        set => SetValue(ImageSourceProperty, value);
+    }
+
     public int Battery
     {
         get => (int)GetValue(BatteryProperty);
@@ -50,6 +60,11 @@ public partial class BatteryRingControl : UserControl
     private static void OnLabelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is BatteryRingControl control) control.TxtLabel.Text = e.NewValue?.ToString() ?? string.Empty;
+    }
+
+    private static void OnImageSourceChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is BatteryRingControl control) control.ImgDevice.Source = e.NewValue as ImageSource;
     }
 
     private static void OnChargingChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

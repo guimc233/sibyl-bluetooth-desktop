@@ -39,4 +39,10 @@ public class DeviceCapability
     public bool SupportsToneVolume { get; set; }        // 提示音音量调节
     public bool SupportsWhiteNoise { get; set; } = true;// 疗愈白噪音
     public bool SupportsRename { get; set; } = true;    // 修改蓝牙名称
+
+    // 耳机图片资源路径 (用于界面高精度真机形象展示)
+    public string LeftImagePath { get; set; } = "Resources/Images/ear_left.png";
+    public string RightImagePath { get; set; } = "Resources/Images/ear_right.png";
+    public string CaseImagePath { get; set; } = "Resources/Images/ear_box.png";
+    public string HeroImagePath { get; set; } = "Resources/Images/device_hero.png";
 }

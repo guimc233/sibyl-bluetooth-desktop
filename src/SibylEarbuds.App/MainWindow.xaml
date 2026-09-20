@@ -89,8 +89,8 @@
 
             <!-- 左侧品牌与设备名称 -->
             <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                <Border Width="42" Height="42" Background="#2563EB" CornerRadius="12" Margin="0,0,12,0">
-                    <TextBlock Text="🎧" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <Border Width="42" Height="42" Background="#1E293B" BorderBrush="#3B82F6" BorderThickness="1" CornerRadius="12" Margin="0,0,12,0" Padding="4">
+                    <Image Source="Resources/Images/app_logo.png" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Border>
                 <StackPanel VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal">
@@ -151,11 +151,17 @@
                     <!-- 卡片 1: 电量 -->
                     <Border Style="{StaticResource FluentCard}">
                         <StackPanel>
-                            <TextBlock Text="耳机电量状态" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,14"/>
+                            <DockPanel Margin="0,0,0,10">
+                                <TextBlock Text="耳机电量与造型" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding CurrentProfile.ChipDescription}" FontSize="11" Foreground="#38BDF8" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                            </DockPanel>
                             <UniformGrid Columns="3">
-                                <controls:BatteryRingControl Battery="{Binding LeftBattery}" Label="左耳 (L)" IsCharging="{Binding IsLeftCharging}"/>
-                                <controls:BatteryRingControl Battery="{Binding RightBattery}" Label="右耳 (R)" IsCharging="{Binding IsRightCharging}"/>
-                                <controls:BatteryRingControl Battery="{Binding CaseBattery}" Label="充电盒" IsCharging="{Binding IsCaseCharging}"/>
+                                <controls:BatteryRingControl Battery="{Binding LeftBattery}" Label="左耳 (L)" IsCharging="{Binding IsLeftCharging}" 
+                                                             ImageSource="Resources/Images/ear_left.png"/>
+                                <controls:BatteryRingControl Battery="{Binding RightBattery}" Label="右耳 (R)" IsCharging="{Binding IsRightCharging}" 
+                                                             ImageSource="Resources/Images/ear_right.png"/>
+                                <controls:BatteryRingControl Battery="{Binding CaseBattery}" Label="充电盒" IsCharging="{Binding IsCaseCharging}" 
+                                                             ImageSource="Resources/Images/ear_box.png"/>
                             </UniformGrid>
                         </StackPanel>
                     </Border>
