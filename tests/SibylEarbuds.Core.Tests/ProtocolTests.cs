@@ -106,4 +106,51 @@ public class ProtocolTests
         await service.DisconnectAsync();
         Assert.False(service.CurrentStatus.IsConnected);
     }
+
+    [Fact]
+    public void Test_DeviceModelProfiles_MappingAndMatching()
+    {
+        var profiles = DeviceModelProfiles.GetAllProfiles();
+        Assert.NotEmpty(profiles);
+
+        // 验证 S1 支持全套功能
+        var s1 = DeviceModelProfiles.MatchProfileByName("SIBYL S1 ANC");
+        Assert.Equal("S1", s1.ModelId);
+        Assert.True(s1.SupportsAnc);
+        Assert.True(s1.SupportsTimedShutdown);
+        Assert.True(s1.SupportsSleepMode);
+
+        // 验证 B6 独有 RGB 炫彩灯效
+        var b6 = DeviceModelProfiles.MatchProfileByName("SIBYL B6 Cyber");
+        Assert.Equal("B6", b6.ModelId);
+        Assert.True(b6.SupportsLightEffect);
+
+        // 验证 S10 半入耳无主动降噪
+        var s10 = DeviceModelProfiles.MatchProfileByName("SIBYL S10");
+        Assert.Equal("S10", s10.ModelId);
+        Assert.False(s10.SupportsAnc);
+
+        // 验证 B8 支持体感控制
+        var b8 = DeviceModelProfiles.MatchProfileByName("SIBYL B8 Motion");
+        Assert.Equal("B8", b8.ModelId);
+        Assert.True(b8.SupportsSomatosensory);
+    }
+
+    [Fact]
+    public void Test_BuiltInSounds_AndOfficialDspTunings()
+    {
+        // 验证 3 个自带白噪音/疗愈音效
+        var sounds = BuiltInSoundLibrary.Sounds;
+        Assert.Equal(3, sounds.Count);
+        Assert.Contains(sounds, s => s.Type == BuiltInSoundType.PinkNoise);
+        Assert.Contains(sounds, s => s.Type == BuiltInSoundType.ForestBirds);
+        Assert.Contains(sounds, s => s.Type == BuiltInSoundType.SummerRain);
+
+        // 验证 3 个官方 DSP 硬件经典调音
+        var dspTunings = BuiltInSoundLibrary.OfficialDspTunings;
+        Assert.Equal(3, dspTunings.Count);
+        Assert.Contains(dspTunings, t => t.Name.Contains("经典"));
+        Assert.Contains(dspTunings, t => t.Name.Contains("摇滚"));
+        Assert.Contains(dspTunings, t => t.Name.Contains("抒情"));
+    }
 }

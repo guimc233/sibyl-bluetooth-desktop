@@ -52,9 +52,18 @@ public class MainViewModel : ViewModelBase, IDisposable
     // 按键映射
     private EarbudKeySettings _keySettings = new();
 
+    // 自带音频播放与型号能力映射
+    private readonly Services.AudioPlayerService _audioPlayer = new();
+    private DeviceCapability _currentProfile = DeviceModelProfiles.MatchProfileByName("S1");
+    private BuiltInSoundInfo? _selectedSound;
+    private bool _isSoundPlaying;
+    private double _soundVolume = 0.6;
+
     // 扫描列表
     public ObservableCollection<DiscoveredBleDevice> DiscoveredDevices { get; } = [];
     public ObservableCollection<string> LogLines { get; } = [];
+    public ObservableCollection<DeviceCapability> AllModelProfiles { get; } = new(DeviceModelProfiles.GetAllProfiles());
+    public ObservableCollection<BuiltInSoundInfo> BuiltInSounds { get; } = new(BuiltInSoundLibrary.Sounds);
 
     // Commands
     public ICommand ScanCommand { get; }
@@ -69,6 +78,8 @@ public class MainViewModel : ViewModelBase, IDisposable
     public ICommand SaveKeySettingsCommand { get; }
     public ICommand ApplyEqPresetCommand { get; }
     public ICommand SwitchTransportCommand { get; }
+    public ICommand PlaySoundCommand { get; }
+    public ICommand StopSoundCommand { get; }
 
     public MainViewModel()
     {
@@ -105,6 +116,35 @@ public class MainViewModel : ViewModelBase, IDisposable
             }
         });
         SwitchTransportCommand = new RelayCommand(ToggleMockMode);
+
+        _selectedSound = BuiltInSounds.FirstOrDefault();
+        PlaySoundCommand = new RelayCommand(param =>
+        {
+            if (param is BuiltInSoundInfo sound)
+            {
+                SelectedSound = sound;
+                _audioPlayer.Play(sound, SoundVolume);
+                AddLog($"[SOUND] 播放自带音效: {sound.Name}");
+            }
+            else if (SelectedSound != null)
+            {
+                _audioPlayer.Play(SelectedSound, SoundVolume);
+                AddLog($"[SOUND] 播放自带音效: {SelectedSound.Name}");
+            }
+        });
+        StopSoundCommand = new RelayCommand(() =>
+        {
+            _audioPlayer.Stop();
+            AddLog("[SOUND] 停止音效播放");
+        });
+
+        _audioPlayer.PlaybackStateChanged += (playing, sound) =>
+        {
+            Application.Current?.Dispatcher?.Invoke(() =>
+            {
+                IsSoundPlaying = playing;
+            });
+        };
 
         AddLog("[SYS] SIBYL 耳机控制中枢就绪 (Windows 10/11 优化版)");
         AddLog("[AUDIO-GUARD] 物理级隔离已生效：绝不触碰 A2DP 音频流，指令通道走纯 BLE GATT");
@@ -228,6 +268,36 @@ public class MainViewModel : ViewModelBase, IDisposable
     {
         get => _isFindingEarphone;
         set => SetProperty(ref _isFindingEarphone, value);
+    }
+
+    public DeviceCapability CurrentProfile
+    {
+        get => _currentProfile;
+        set => SetProperty(ref _currentProfile, value);
+    }
+
+    public BuiltInSoundInfo? SelectedSound
+    {
+        get => _selectedSound;
+        set => SetProperty(ref _selectedSound, value);
+    }
+
+    public bool IsSoundPlaying
+    {
+        get => _isSoundPlaying;
+        set => SetProperty(ref _isSoundPlaying, value);
+    }
+
+    public double SoundVolume
+    {
+        get => _soundVolume;
+        set
+        {
+            if (SetProperty(ref _soundVolume, value))
+            {
+                _audioPlayer.SetVolume(value);
+            }
+        }
     }
 
     public int SelectedShutdownMinutes
@@ -442,6 +512,7 @@ public class MainViewModel : ViewModelBase, IDisposable
             {
                 IsConnected = status.IsConnected;
                 DeviceName = status.DeviceName;
+                CurrentProfile = DeviceModelProfiles.MatchProfileByName(status.DeviceName);
                 LeftBattery = status.LeftBattery;
                 RightBattery = status.RightBattery;
                 CaseBattery = status.CaseBattery;
@@ -471,6 +542,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 
     public void Dispose()
     {
+        _audioPlayer.Dispose();
         _deviceService.Dispose();
     }
 

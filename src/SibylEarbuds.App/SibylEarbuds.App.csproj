@@ -23,4 +23,10 @@
     <ProjectReference Include="..\SibylEarbuds.Core\SibylEarbuds.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Resources\Audio\*.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

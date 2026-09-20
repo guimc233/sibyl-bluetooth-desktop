@@ -110,12 +110,17 @@
 
             <!-- 右侧操作栏 -->
             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" Margin="0,0,12,0" VerticalAlignment="Center">
+                    <TextBlock Text="适配型号:" FontSize="12" Foreground="#94A3B8" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <ComboBox ItemsSource="{Binding AllModelProfiles}" SelectedItem="{Binding CurrentProfile}" 
+                              DisplayMemberPath="DisplayName" Width="180" Background="#1E293B" Foreground="White" Height="28"/>
+                </StackPanel>
                 <Button Content="切换模拟/真实模式" Command="{Binding SwitchTransportCommand}" 
-                        Style="{StaticResource GhostButton}" Margin="0,0,10,0"/>
+                        Style="{StaticResource GhostButton}" Margin="0,0,8,0"/>
                 <Button Content="搜索设备" Command="{Binding ScanCommand}" 
-                        Style="{StaticResource GhostButton}" Margin="0,0,10,0"/>
+                        Style="{StaticResource GhostButton}" Margin="0,0,8,0"/>
                 <Button Content="连接耳机" Command="{Binding ConnectCommand}" 
-                        Style="{StaticResource AccentButton}" Margin="0,0,10,0"
+                        Style="{StaticResource AccentButton}" Margin="0,0,8,0"
                         Visibility="{Binding IsConnected, Converter={StaticResource BoolToVis}, ConverterParameter=Rev}"/>
                 <Button Content="断开连接" Command="{Binding DisconnectCommand}" 
                         Style="{StaticResource GhostButton}"
@@ -211,6 +216,33 @@
                                     <ComboBoxItem Content="30 分钟"/>
                                     <ComboBoxItem Content="60 分钟"/>
                                 </ComboBox>
+                            </DockPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 卡片 4: App 自带 3 个疗愈白噪音音效 -->
+                    <Border Style="{StaticResource FluentCard}">
+                        <StackPanel>
+                            <DockPanel Margin="0,0,0,10">
+                                <TextBlock Text="🎵 自带疗愈音效 (白噪音)" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <Button Content="⏹️ 停止" Command="{Binding StopSoundCommand}" Style="{StaticResource GhostButton}" 
+                                        HorizontalAlignment="Right" Padding="8,3"/>
+                            </DockPanel>
+
+                            <!-- 3个自带音效选项 -->
+                            <UniformGrid Columns="3" Margin="0,0,0,10">
+                                <Button Content="🌸 粉红噪音" Command="{Binding PlaySoundCommand}" CommandParameter="{Binding BuiltInSounds[0]}" 
+                                        Style="{StaticResource GhostButton}" Margin="0,0,2,0"/>
+                                <Button Content="🐦 森林鸟鸣" Command="{Binding PlaySoundCommand}" CommandParameter="{Binding BuiltInSounds[1]}" 
+                                        Style="{StaticResource GhostButton}" Margin="2,0,2,0"/>
+                                <Button Content="🌧️ 淅沥细雨" Command="{Binding PlaySoundCommand}" CommandParameter="{Binding BuiltInSounds[2]}" 
+                                        Style="{StaticResource GhostButton}" Margin="2,0,0,0"/>
+                            </UniformGrid>
+
+                            <!-- 音量调节 -->
+                            <DockPanel Margin="0,4,0,0">
+                                <TextBlock Text="音效音量:" FontSize="11" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                <Slider Value="{Binding SoundVolume}" Minimum="0" Maximum="1" Width="140" HorizontalAlignment="Right"/>
                             </DockPanel>
                         </StackPanel>
                     </Border>
