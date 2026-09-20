@@ -145,6 +145,7 @@ public class MainViewModel : ViewModelBase, IDisposable
             if (param is string str && int.TryParse(str, out int lightModeInt))
             {
                 LightMode = (LightModeType)lightModeInt;
+                AddLog($"[LED] 切换灯效模式: {LightMode}");
             }
         });
         SwitchTransportCommand = new RelayCommand(ToggleMockMode);
@@ -509,28 +510,39 @@ public class MainViewModel : ViewModelBase, IDisposable
     public async Task SetAncAsync(AncModeType mode)
     {
         CurrentAncMode = mode;
+        AddLog($"[ANC] 请求切换降噪模式: {mode}");
         await _deviceService.SetAncModeAsync(mode, CurrentAncDepth);
     }
 
     public async Task ToggleGameModeAsync()
     {
         // CheckBox 的双向绑定会先更新 IsGameMode，此处直接以最新状态为准，避免二次取反导致状态被弹回
+        AddLog($"[GAME] 切换游戏模式: {(IsGameMode ? "开启 (38ms)" : "关闭")}");
         await _deviceService.SetGameModeAsync(IsGameMode);
     }
 
     public async Task ToggleTouchLockAsync()
     {
+        AddLog($"[TOUCH] 切换触控锁定: {(IsTouchDisabled ? "锁定 (防误触)" : "解除锁定")}");
         await _deviceService.SetTouchLockAsync(IsTouchDisabled);
     }
 
     public async Task ToggleFindEarphoneAsync()
     {
         bool nextState = !IsFindingEarphone;
-        bool success = await _deviceService.FindEarphonesAsync(nextState);
-        if (success)
+        IsFindingEarphone = nextState;
+        if (nextState)
         {
-            IsFindingEarphone = nextState;
+            var tone = BuiltInSounds.FirstOrDefault();
+            if (tone != null) _audioPlayer.Play(tone, 1.0);
+            AddLog("[FIND] 寻找耳机：已开启蜂鸣提示音");
         }
+        else
+        {
+            _audioPlayer.Stop();
+            AddLog("[FIND] 已停止寻找耳机");
+        }
+        await _deviceService.FindEarphonesAsync(nextState);
     }
 
     private void ToggleMockMode()

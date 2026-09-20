@@ -14,8 +14,8 @@ namespace SibylEarbuds.App.Bluetooth;
 /// 基于 Windows 10/11 原生 WinRT BLE 接口的低功耗蓝牙通信实现
 /// 特性:
 /// 1. 纯净 WinRT GATT 调用，绝不触碰 A2DP 音频流，绝不占用 COM 串口，确保零音频卡顿
-/// 2. 自动搜索匹配 SIBYL/杰理/炬力 GATT 服务与特征值，支持自适应特征匹配
-/// 3. 支持 WriteWithoutResponse 毫秒级免响应写入
+/// 2. 严格匹配 SIBYL 官方 00FE (Write 00F1 / Notify 00F2) 及杰理/中科蓝讯协议特征
+/// 3. 支持跨所有服务智能自适应探测，保障所有双模蓝牙耳机通道畅通
 /// </summary>
 public class WinRtBleTransport : IBleTransport
 {
@@ -86,7 +86,7 @@ public class WinRtBleTransport : IBleTransport
                 OnLog?.Invoke($"[WinRT-BLE] 连接状态变更为: {dev.ConnectionStatus}");
             };
 
-            // 获取 GATT 服务
+            // 获取所有 GATT 服务
             var gattServicesResult = await _bluetoothLeDevice.GetGattServicesAsync(BluetoothCacheMode.Uncached);
             if (gattServicesResult.Status != GattCommunicationStatus.Success)
             {
@@ -94,58 +94,90 @@ public class WinRtBleTransport : IBleTransport
                 return false;
             }
 
-            // 寻找匹配的 SIBYL 或通用特征
-            GattDeviceService? targetService = null;
-            foreach (var s in gattServicesResult.Services)
+            _writeCharacteristic = null;
+            _notifyCharacteristic = null;
+
+            // 1. 优先在官方 Sibyl 服务 00FE 中查找 00F1 / 00F2
+            foreach (var service in gattServicesResult.Services)
             {
-                if (SibylUuids.CandidateServiceUuids.Contains(s.Uuid))
+                OnLog?.Invoke($"[WinRT-BLE] 扫描到 GATT 服务: {service.Uuid}");
+                var charResult = await service.GetCharacteristicsAsync(BluetoothCacheMode.Uncached);
+                if (charResult.Status != GattCommunicationStatus.Success) continue;
+
+                foreach (var ch in charResult.Characteristics)
                 {
-                    targetService = s;
-                    break;
+                    OnLog?.Invoke($"[WinRT-BLE]   -> 特征值: {ch.Uuid} (属性: {ch.CharacteristicProperties})");
+
+                    if (ch.Uuid == SibylUuids.SibylWriteUuid || ch.Uuid == SibylUuids.JieLiWriteUuid || ch.Uuid == SibylUuids.JieLiWrite2Uuid)
+                    {
+                        _writeCharacteristic = ch;
+                    }
+                    if (ch.Uuid == SibylUuids.SibylNotifyUuid || ch.Uuid == SibylUuids.JieLiNotifyUuid || ch.Uuid == SibylUuids.JieLiNotify2Uuid)
+                    {
+                        _notifyCharacteristic = ch;
+                    }
                 }
             }
 
-            targetService ??= gattServicesResult.Services.FirstOrDefault();
-
-            if (targetService == null)
+            // 2. 如果官方特定特征未直接命中，则自适应寻找非标准系统服务中具备读写和Notify能力的特征
+            if (_writeCharacteristic == null || _notifyCharacteristic == null)
             {
-                OnLog?.Invoke("[WinRT-BLE-ERR] 未找到适用的 GATT 服务");
-                return false;
-            }
-
-            var characteristicsResult = await targetService.GetCharacteristicsAsync(BluetoothCacheMode.Uncached);
-            if (characteristicsResult.Status != GattCommunicationStatus.Success)
-            {
-                OnLog?.Invoke("[WinRT-BLE-ERR] 获取 GATT 特征值失败");
-                return false;
-            }
-
-            foreach (var ch in characteristicsResult.Characteristics)
-            {
-                var props = ch.CharacteristicProperties;
-                if ((props.HasFlag(GattCharacteristicProperties.Write) || props.HasFlag(GattCharacteristicProperties.WriteWithoutResponse))
-                    && _writeCharacteristic == null)
+                foreach (var service in gattServicesResult.Services)
                 {
-                    _writeCharacteristic = ch;
-                }
+                    // 跳过 Generic Access (1800), Generic Attribute (1801), Device Info (180A)
+                    string sUuid = service.Uuid.ToString().ToUpperInvariant();
+                    if (sUuid.StartsWith("00001800") || sUuid.StartsWith("00001801") || sUuid.StartsWith("0000180A"))
+                    {
+                        continue;
+                    }
 
-                if ((props.HasFlag(GattCharacteristicProperties.Notify) || props.HasFlag(GattCharacteristicProperties.Indicate))
-                    && _notifyCharacteristic == null)
-                {
-                    _notifyCharacteristic = ch;
+                    var charResult = await service.GetCharacteristicsAsync(BluetoothCacheMode.Uncached);
+                    if (charResult.Status != GattCommunicationStatus.Success) continue;
+
+                    foreach (var ch in charResult.Characteristics)
+                    {
+                        var props = ch.CharacteristicProperties;
+                        if (_writeCharacteristic == null &&
+                            (props.HasFlag(GattCharacteristicProperties.Write) || props.HasFlag(GattCharacteristicProperties.WriteWithoutResponse)))
+                        {
+                            _writeCharacteristic = ch;
+                        }
+
+                        if (_notifyCharacteristic == null &&
+                            (props.HasFlag(GattCharacteristicProperties.Notify) || props.HasFlag(GattCharacteristicProperties.Indicate)))
+                        {
+                            _notifyCharacteristic = ch;
+                        }
+                    }
+
+                    if (_writeCharacteristic != null && _notifyCharacteristic != null)
+                        break;
                 }
             }
 
             if (_writeCharacteristic == null)
             {
-                OnLog?.Invoke("[WinRT-BLE-WARN] 未找到具有写入权限的特征值");
+                OnLog?.Invoke("[WinRT-BLE-WARN] 未找到具有写入权限的控制特征值");
                 return false;
             }
 
+            OnLog?.Invoke($"[WinRT-BLE-TARGET] 选定写入通道: {_writeCharacteristic.Uuid}");
+
             if (_notifyCharacteristic != null)
             {
-                await _notifyCharacteristic.WriteClientCharacteristicConfigurationDescriptorAsync(
+                OnLog?.Invoke($"[WinRT-BLE-TARGET] 选定回传通道: {_notifyCharacteristic.Uuid}");
+                var cccdResult = await _notifyCharacteristic.WriteClientCharacteristicConfigurationDescriptorWithResultAsync(
                     GattClientCharacteristicConfigurationDescriptorValue.Notify);
+                
+                if (cccdResult.Status == GattCommunicationStatus.Success)
+                {
+                    OnLog?.Invoke("[WinRT-BLE] 成功订阅耳机数据回传通知 (Notify Enabled)");
+                }
+                else
+                {
+                    OnLog?.Invoke($"[WinRT-BLE-WARN] 订阅回传通知状态: {cccdResult.Status}");
+                }
+
                 _notifyCharacteristic.ValueChanged += (ch, args) =>
                 {
                     using var reader = DataReader.FromBuffer(args.CharacteristicValue);
@@ -206,7 +238,11 @@ public class WinRtBleTransport : IBleTransport
     public async Task<bool> WriteCharacteristicAsync(byte[] data, bool writeWithoutResponse = false)
     {
 #if WINDOWS
-        if (_writeCharacteristic == null) return false;
+        if (_writeCharacteristic == null)
+        {
+            OnLog?.Invoke("[WinRT-BLE-WRITE-ERR] 写入特征未就绪，无法发送指令");
+            return false;
+        }
 
         try
         {
@@ -214,13 +250,41 @@ public class WinRtBleTransport : IBleTransport
             writer.WriteBytes(data);
             var buffer = writer.DetachBuffer();
 
-            var option = writeWithoutResponse ? GattWriteOption.WriteWithoutResponse : GattWriteOption.WriteWithResponse;
+            var props = _writeCharacteristic.CharacteristicProperties;
+            GattWriteOption option = GattWriteOption.WriteWithResponse;
+
+            if (writeWithoutResponse && props.HasFlag(GattCharacteristicProperties.WriteWithoutResponse))
+            {
+                option = GattWriteOption.WriteWithoutResponse;
+            }
+            else if (!props.HasFlag(GattCharacteristicProperties.Write) && props.HasFlag(GattCharacteristicProperties.WriteWithoutResponse))
+            {
+                option = GattWriteOption.WriteWithoutResponse;
+            }
+
             var result = await _writeCharacteristic.WriteValueWithResultAsync(buffer, option);
-            return result.Status == GattCommunicationStatus.Success;
+            if (result.Status == GattCommunicationStatus.Success)
+            {
+                return true;
+            }
+
+            // 如果首次写入由于选项不匹配失败，尝试换一种写入模式重试一次
+            var retryOption = (option == GattWriteOption.WriteWithResponse)
+                ? GattWriteOption.WriteWithoutResponse
+                : GattWriteOption.WriteWithResponse;
+
+            var retryResult = await _writeCharacteristic.WriteValueWithResultAsync(buffer, retryOption);
+            if (retryResult.Status == GattCommunicationStatus.Success)
+            {
+                return true;
+            }
+
+            OnLog?.Invoke($"[WinRT-BLE-WRITE-ERR] 写入特征值未成功: {retryResult.Status}, 错误码: {retryResult.ProtocolError}");
+            return false;
         }
         catch (Exception ex)
         {
-            OnLog?.Invoke($"[WinRT-BLE-WRITE-ERR] {ex.Message}");
+            OnLog?.Invoke($"[WinRT-BLE-WRITE-ERR] 异常: {ex.Message}");
             return false;
         }
 #else

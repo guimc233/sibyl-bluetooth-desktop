@@ -40,10 +40,10 @@ public class EarbudDeviceService : IDisposable
             CurrentStatus.DeviceName = Transport.ConnectedDeviceName ?? "SIBYL Earbuds";
             StatusUpdated?.Invoke(CurrentStatus);
 
-            // 查询一次设备最新状态
-            await Task.Delay(200);
+            // 握手成功后，向耳机发起属性全面查询 (电量/ANC/EQ/游戏模式/版本/名称)
+            await Task.Delay(300);
             var queryPacket = PacketBuilder.BuildQueryStatusPacket();
-            await Dispatcher.SendCriticalCommandAsync(SibylCommandId.QueryStatus, queryPacket);
+            await Dispatcher.SendCriticalCommandAsync(SibylCommandId.QueryInfo, queryPacket);
         }
         return success;
     }
@@ -147,7 +147,7 @@ public class EarbudDeviceService : IDisposable
     public async Task<bool> FindEarphonesAsync(bool play)
     {
         var packet = PacketBuilder.BuildFindEarphonePacket(play);
-        return await Dispatcher.SendCriticalCommandAsync(SibylCommandId.FindEarphone, packet);
+        return await Dispatcher.SendCriticalCommandAsync(SibylCommandId.ToneVolumeControl, packet);
     }
 
     /// <summary>

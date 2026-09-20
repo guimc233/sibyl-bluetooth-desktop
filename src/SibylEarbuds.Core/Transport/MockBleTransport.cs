@@ -81,7 +81,7 @@ public class MockBleTransport : IBleTransport
         var parsed = PacketParser.Parse(data);
         if (parsed.IsSuccess)
         {
-            OnLog?.Invoke($"[MOCK-RX] 耳机微控制器接收到有效指令: {parsed.CommandId} (SubCmd: {parsed.SubCmd})");
+            OnLog?.Invoke($"[MOCK-RX] 耳机微控制器接收到有效指令: {parsed.CommandId} (Len: {data.Length} B)");
 
             // 模拟耳机处理响应
             switch (parsed.CommandId)
@@ -90,6 +90,7 @@ public class MockBleTransport : IBleTransport
                     _ancMode = parsed.Payload[0];
                     if (parsed.Payload.Length >= 2) _ancDepth = parsed.Payload[1];
                     OnLog?.Invoke($"[MOCK-ANC] 耳机 ANC 模式已平滑切换为: {(AncModeType)_ancMode}, 深度: {_ancDepth}");
+                    SendMockStatusReport();
                     break;
 
                 case SibylCommandId.Equalizer when parsed.Payload.Length >= 10:
@@ -99,13 +100,18 @@ public class MockBleTransport : IBleTransport
                 case SibylCommandId.GameMode when parsed.Payload.Length >= 1:
                     _gameMode = parsed.Payload[0] == 1;
                     OnLog?.Invoke($"[MOCK-LATENCY] 耳机低延迟游戏模式: {(_gameMode ? "已激活 (38ms)" : "已关闭 (高音质)")}");
+                    SendMockStatusReport();
+                    break;
+
+                case SibylCommandId.CloseTouch when parsed.Payload.Length >= 1:
+                    OnLog?.Invoke($"[MOCK-TOUCH] 触控防误触锁定状态更新为: {parsed.Payload[0] == 1}");
                     break;
 
                 case SibylCommandId.LightMode when parsed.Payload.Length >= 6:
                     OnLog?.Invoke($"[MOCK-LED] 灯效更新: 模式={parsed.Payload[0]}, RGB=({parsed.Payload[3]},{parsed.Payload[4]},{parsed.Payload[5]})");
                     break;
 
-                case SibylCommandId.QueryStatus:
+                case SibylCommandId.QueryInfo:
                     SendMockStatusReport();
                     break;
             }
@@ -122,20 +128,21 @@ public class MockBleTransport : IBleTransport
     {
         if (!IsConnected) return;
 
-        // Payload: [LeftBat], [RightBat], [CaseBat], [AncMode], [AncDepth], [GameMode]
-        byte[] payload =
-        [
-            _leftBattery,
-            _rightBattery,
-            _caseBattery,
-            _ancMode,
-            _ancDepth,
-            (byte)(_gameMode ? 1 : 0)
-        ];
+        // 1. 电量通知 (Battery 12)
+        byte[] batPayload = [_leftBattery, _rightBattery, _caseBattery];
+        var batPacket = PacketBuilder.BuildPacket(SibylCommandId.Battery, batPayload);
+        OnDataReceived?.Invoke(batPacket);
 
-        var responsePacket = PacketBuilder.BuildPacket(SibylCommandId.QueryStatus, PacketBuilder.SubCmdNotify, payload);
-        OnDataReceived?.Invoke(responsePacket);
-        OnLog?.Invoke($"[MOCK-NOTIFY] 耳机电量与状态回传: 左耳={_leftBattery}% 右耳={_rightBattery}% 仓={_caseBattery}%");
+        // 2. ANC 状态通知 (AncMode 9)
+        byte[] ancPayload = [_ancMode, _ancDepth];
+        var ancPacket = PacketBuilder.BuildPacket(SibylCommandId.AncMode, ancPayload);
+        OnDataReceived?.Invoke(ancPacket);
+
+        // 3. 游戏模式通知 (GameMode 14)
+        var gamePacket = PacketBuilder.BuildPacket(SibylCommandId.GameMode, [(byte)(_gameMode ? 1 : 0)]);
+        OnDataReceived?.Invoke(gamePacket);
+
+        OnLog?.Invoke($"[MOCK-NOTIFY] 耳机电量与状态回传: 左耳={_leftBattery}% 右耳={_rightBattery}% 仓={_caseBattery}% | ANC={(AncModeType)_ancMode}");
     }
 
     public void Dispose()

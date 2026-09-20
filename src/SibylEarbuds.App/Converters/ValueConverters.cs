@@ -50,6 +50,40 @@ public class AncActiveConverter : IValueConverter
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
 }
 
+public class AncActiveToBrushConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is AncModeType currentMode && parameter is string targetStr && int.TryParse(targetStr, out int targetModeInt))
+        {
+            if ((int)currentMode == targetModeInt)
+            {
+                return new SolidColorBrush(Color.FromRgb(0, 120, 212)); // Windows 11 Fluent Blue
+            }
+        }
+        return Brushes.Transparent;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
+}
+
+public class AncActiveToForegroundConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is AncModeType currentMode && parameter is string targetStr && int.TryParse(targetStr, out int targetModeInt))
+        {
+            if ((int)currentMode == targetModeInt)
+            {
+                return Brushes.White;
+            }
+        }
+        return new SolidColorBrush(Color.FromRgb(209, 213, 219));
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
+}
+
 public class BatteryToColorConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)

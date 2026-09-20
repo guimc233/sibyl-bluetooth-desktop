@@ -13,6 +13,7 @@ obj/
 *.apk
 *.dex
 *.so
+*.zip
 
 # OS files
 .DS_Store

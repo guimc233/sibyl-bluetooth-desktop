@@ -7,7 +7,6 @@ public class ParsedPacketResult
 {
     public bool IsSuccess { get; set; }
     public SibylCommandId CommandId { get; set; }
-    public byte SubCmd { get; set; }
     public byte[] Payload { get; set; } = [];
     public string? ErrorMessage { get; set; }
 }
@@ -15,64 +14,64 @@ public class ParsedPacketResult
 public static class PacketParser
 {
     /// <summary>
-    /// 解析原始 BLE 接收字节流
+    /// 解析官方 0xFF ... 0xAA 数据流
+    /// 格式: [0xFF] [SeqIndex] [Len] [CmdId] [Payload...] [0xAA]
+    /// 其中 Len 是 CmdId + Payload 的长度
     /// </summary>
     public static ParsedPacketResult Parse(byte[] data)
     {
-        if (data == null || data.Length < 6)
+        if (data == null || data.Length < 5)
         {
             return new ParsedPacketResult { IsSuccess = false, ErrorMessage = "Packet too short" };
         }
 
-        // 检查 Header
-        if (data[0] != PacketBuilder.MagicHeader1 || data[1] != PacketBuilder.MagicHeader2)
+        // 寻找 0xFF 起始字节
+        int start = -1;
+        for (int i = 0; i < data.Length; i++)
         {
-            return new ParsedPacketResult { IsSuccess = false, ErrorMessage = "Invalid magic header" };
-        }
-
-        var commandId = (SibylCommandId)data[2];
-        byte subCmd = data[3];
-        byte payloadLen = data[4];
-
-        if (data.Length < 5 + payloadLen + 1)
-        {
-            return new ParsedPacketResult { IsSuccess = false, ErrorMessage = "Incomplete payload" };
-        }
-
-        // 校验 Checksum
-        byte calculatedChecksum = 0;
-        for (int i = 2; i < 5 + payloadLen; i++)
-        {
-            calculatedChecksum = (byte)(calculatedChecksum + data[i]);
-        }
-
-        byte receivedChecksum = data[5 + payloadLen];
-        if (calculatedChecksum != receivedChecksum)
-        {
-            return new ParsedPacketResult
+            if (data[i] == PacketBuilder.StartByte)
             {
-                IsSuccess = false,
-                ErrorMessage = $"Checksum mismatch: expected {calculatedChecksum:X2}, got {receivedChecksum:X2}"
-            };
+                start = i;
+                break;
+            }
         }
 
-        var payload = new byte[payloadLen];
+        if (start < 0 || start + 4 >= data.Length)
+        {
+            return new ParsedPacketResult { IsSuccess = false, ErrorMessage = "No valid 0xFF header" };
+        }
+
+        int len = data[start + 2] & 0xFF; // CmdId + Payload 的总长度
+        int packetTotalLen = len + 4; // 1(0xFF) + 1(seq) + 1(len) + len + 1(0xAA)
+
+        if (start + packetTotalLen > data.Length)
+        {
+            return new ParsedPacketResult { IsSuccess = false, ErrorMessage = "Incomplete packet payload" };
+        }
+
+        if (data[start + packetTotalLen - 1] != PacketBuilder.EndByte)
+        {
+            return new ParsedPacketResult { IsSuccess = false, ErrorMessage = "Invalid 0xAA tail byte" };
+        }
+
+        var cmdId = (SibylCommandId)data[start + 3];
+        int payloadLen = len - 1;
+        byte[] payload = new byte[payloadLen];
         if (payloadLen > 0)
         {
-            Array.Copy(data, 5, payload, 0, payloadLen);
+            Array.Copy(data, start + 4, payload, 0, payloadLen);
         }
 
         return new ParsedPacketResult
         {
             IsSuccess = true,
-            CommandId = commandId,
-            SubCmd = subCmd,
+            CommandId = cmdId,
             Payload = payload
         };
     }
 
     /// <summary>
-    /// 将解析后的数据更新到设备全局状态对象中
+    /// 将官方回包解析结果应用到 DeviceStatus
     /// </summary>
     public static bool ApplyToStatus(ParsedPacketResult packet, DeviceStatus status)
     {
@@ -80,32 +79,28 @@ public static class PacketParser
 
         switch (packet.CommandId)
         {
-            case SibylCommandId.QueryStatus:
-                // Payload: [LeftBat], [RightBat], [CaseBat], [AncMode], [GameMode], [Flags...]
+            case SibylCommandId.Battery: // 12 (0x0C)
+                // 官方 checkBattery: frame[1]=Left, frame[2]=Right, frame[3]=Case
                 if (packet.Payload.Length >= 3)
                 {
-                    status.LeftBattery = Math.Clamp(packet.Payload[0] & 0x7F, 0, 100);
-                    status.IsLeftCharging = (packet.Payload[0] & 0x80) != 0;
+                    byte b1 = packet.Payload[0];
+                    byte b2 = packet.Payload[1];
+                    byte b3 = packet.Payload[2];
 
-                    status.RightBattery = Math.Clamp(packet.Payload[1] & 0x7F, 0, 100);
-                    status.IsRightCharging = (packet.Payload[1] & 0x80) != 0;
+                    status.LeftBattery = Math.Clamp(b1 & 0x7F, 0, 100);
+                    status.IsLeftCharging = (b1 & 0x80) != 0;
 
-                    status.CaseBattery = Math.Clamp(packet.Payload[2] & 0x7F, 0, 100);
-                    status.IsCaseCharging = (packet.Payload[2] & 0x80) != 0;
-                }
-                if (packet.Payload.Length >= 4)
-                {
-                    var mode = (AncModeType)packet.Payload[3];
-                    var depth = packet.Payload.Length >= 5 ? (AncDepthLevel)packet.Payload[4] : AncDepthLevel.Deep;
-                    status.Anc = new AncState(mode, depth);
-                }
-                if (packet.Payload.Length >= 6)
-                {
-                    status.IsGameModeEnabled = packet.Payload[5] == 1;
-                }
-                return true;
+                    status.RightBattery = Math.Clamp(b2 & 0x7F, 0, 100);
+                    status.IsRightCharging = (b2 & 0x80) != 0;
 
-            case SibylCommandId.AncMode:
+                    status.CaseBattery = Math.Clamp(b3 & 0x7F, 0, 100);
+                    status.IsCaseCharging = (b3 & 0x80) != 0;
+                    return true;
+                }
+                break;
+
+            case SibylCommandId.AncMode: // 9 (0x09)
+                // 官方 checkANCMode: payload[0]=mode, payload[1]=depth
                 if (packet.Payload.Length >= 1)
                 {
                     var mode = (AncModeType)packet.Payload[0];
@@ -115,8 +110,19 @@ public static class PacketParser
                 }
                 break;
 
-            case SibylCommandId.Equalizer:
-                if (packet.Payload.Length >= EqConfiguration.BandCount)
+            case SibylCommandId.Equalizer: // 2 (0x02)
+                // 官方 checkEQData: payload[0]=type, payload[1..10]=10段增益
+                if (packet.Payload.Length >= 11)
+                {
+                    var gains = new int[EqConfiguration.BandCount];
+                    for (int i = 0; i < EqConfiguration.BandCount; i++)
+                    {
+                        gains[i] = (sbyte)packet.Payload[i + 1];
+                    }
+                    status.CurrentEq = new EqConfiguration("耳机当前音效", packet.Payload[0], gains);
+                    return true;
+                }
+                else if (packet.Payload.Length >= 10)
                 {
                     var gains = new int[EqConfiguration.BandCount];
                     for (int i = 0; i < EqConfiguration.BandCount; i++)
@@ -128,7 +134,7 @@ public static class PacketParser
                 }
                 break;
 
-            case SibylCommandId.GameMode:
+            case SibylCommandId.GameMode: // 14 (0x0E)
                 if (packet.Payload.Length >= 1)
                 {
                     status.IsGameModeEnabled = packet.Payload[0] == 1;
@@ -136,7 +142,7 @@ public static class PacketParser
                 }
                 break;
 
-            case SibylCommandId.CloseTouch:
+            case SibylCommandId.CloseTouch: // 7 (0x07)
                 if (packet.Payload.Length >= 1)
                 {
                     status.IsTouchDisabled = packet.Payload[0] == 1;
@@ -144,15 +150,42 @@ public static class PacketParser
                 }
                 break;
 
-            case SibylCommandId.FirmwareVersion:
-                if (packet.Payload.Length > 0)
+            case SibylCommandId.SleepMode: // 33 (0x21)
+                if (packet.Payload.Length >= 1)
+                {
+                    status.IsSleepModeEnabled = packet.Payload[0] == 1;
+                    return true;
+                }
+                break;
+
+            case SibylCommandId.TimedShutdown: // 32 (0x20)
+                if (packet.Payload.Length >= 2)
+                {
+                    status.TimedShutdownMinutes = packet.Payload[0] | (packet.Payload[1] << 8);
+                    return true;
+                }
+                else if (packet.Payload.Length >= 1)
+                {
+                    status.TimedShutdownMinutes = packet.Payload[0];
+                    return true;
+                }
+                break;
+
+            case SibylCommandId.FirmwareVersion: // 13 (0x0D)
+                // 官方 checkVersion: v1.v2.v3
+                if (packet.Payload.Length >= 3)
+                {
+                    status.FirmwareVersion = $"V{packet.Payload[0]}.{packet.Payload[1]}.{packet.Payload[2]}";
+                    return true;
+                }
+                else if (packet.Payload.Length > 0)
                 {
                     status.FirmwareVersion = Encoding.UTF8.GetString(packet.Payload).Trim('\0');
                     return true;
                 }
                 break;
 
-            case SibylCommandId.PairName:
+            case SibylCommandId.PairName: // 39 (0x27)
                 if (packet.Payload.Length > 0)
                 {
                     status.DeviceName = Encoding.UTF8.GetString(packet.Payload).Trim('\0');

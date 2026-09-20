@@ -4,95 +4,77 @@ using SibylEarbuds.Core.Models;
 namespace SibylEarbuds.Core.Protocol;
 
 /// <summary>
-/// SIBYL 蓝牙通信数据帧构建器
-/// 严格匹配 APK 逆向协议，并保障轻量短包，绝不高频占用射频
+/// SIBYL 蓝牙通信数据帧构建器 (严格匹配官方 APK ProductClient.createCMDData)
+/// 格式: [0xFF] [SeqIndex] [Len] [CmdId] [Payload...] [0xAA]
+/// 其中 Len = (payload?.Length ?? 0) + 1
 /// </summary>
 public static class PacketBuilder
 {
-    public const byte MagicHeader1 = 0xAA;
-    public const byte MagicHeader2 = 0x55;
+    public const byte StartByte = 0xFF;
+    public const byte EndByte = 0xAA; // 官方 TransportLayerPacket.SYNC_WORD = -86 (0xAA)
 
-    public const byte SubCmdSet = 0x01;
-    public const byte SubCmdGet = 0x02;
-    public const byte SubCmdNotify = 0x03;
+    private static int _seqIndex = 0;
 
     /// <summary>
-    /// 构建标准协议数据帧：
-    /// [0xAA] [0x55] [CmdId] [SubCmd] [Len] [Payload...] [Checksum]
+    /// 构建官方标准协议数据帧：
+    /// [0xFF] [SeqIndex] [Len] [CmdId] [Payload...] [0xAA]
     /// </summary>
-    public static byte[] BuildPacket(SibylCommandId commandId, byte subCmd, byte[] payload)
+    public static byte[] BuildPacket(SibylCommandId commandId, byte[]? payload = null)
     {
-        var len = (byte)payload.Length;
-        var packet = new byte[5 + len];
-        packet[0] = MagicHeader1;
-        packet[1] = MagicHeader2;
-        packet[2] = (byte)commandId;
-        packet[3] = subCmd;
-        packet[4] = len;
+        int payloadLen = payload?.Length ?? 0;
+        byte[] packet = new byte[payloadLen + 5];
 
-        if (len > 0)
+        packet[0] = StartByte;
+        packet[1] = (byte)(Interlocked.Increment(ref _seqIndex) & 0xFF);
+        packet[2] = (byte)(payloadLen + 1); // 包含 CmdId 本身在内的数据长度
+        packet[3] = (byte)commandId;
+
+        if (payload != null && payloadLen > 0)
         {
-            Array.Copy(payload, 0, packet, 5, len);
+            Array.Copy(payload, 0, packet, 4, payloadLen);
         }
 
-        // 计算 Checksum: 从 packet[2] 累加到 packet[4+len]
-        byte checksum = 0;
-        for (int i = 2; i < 5 + len; i++)
-        {
-            checksum = (byte)(checksum + packet[i]);
-        }
-
-        var result = new byte[packet.Length + 1];
-        Array.Copy(packet, result, packet.Length);
-        result[^1] = checksum;
-        return result;
+        packet[^1] = EndByte;
+        return packet;
     }
 
     /// <summary>
-    /// 构建 ANC 降噪模式切换包
+    /// 构建 ANC 降噪模式切换包 (官方 ProductClient.ancModelChange)
     /// </summary>
     public static byte[] BuildAncPacket(AncModeType mode, AncDepthLevel depth = AncDepthLevel.Deep)
     {
-        // Payload: [Mode: 1=ANC, 2=Normal, 3=Transparency], [Depth: 0/50/100]
         byte[] payload = [(byte)mode, (byte)depth];
-        return BuildPacket(SibylCommandId.AncMode, SubCmdSet, payload);
+        return BuildPacket(SibylCommandId.AncMode, payload);
     }
 
     /// <summary>
-    /// 构建 10段 EQ 均衡器数据包
+    /// 构建 10段 EQ 均衡器数据包 (官方 ProductClient.getSetEqCMD)
     /// </summary>
-    public static byte[] BuildEqPacket(int[] gains)
+    public static byte[] BuildEqPacket(int[] gains, int presetType = 1)
     {
-        if (gains.Length != EqConfiguration.BandCount)
-        {
-            throw new ArgumentException($"Gains array must have exactly {EqConfiguration.BandCount} elements.");
-        }
-
-        // 转化成有符号字节 (范围 -8 ~ +8)
-        var payload = new byte[EqConfiguration.BandCount];
-        for (int i = 0; i < EqConfiguration.BandCount; i++)
+        var payload = new byte[1 + EqConfiguration.BandCount];
+        payload[0] = (byte)presetType;
+        for (int i = 0; i < EqConfiguration.BandCount && i < gains.Length; i++)
         {
             int clamped = Math.Clamp(gains[i], EqConfiguration.MinGain, EqConfiguration.MaxGain);
-            payload[i] = (byte)(sbyte)clamped;
+            payload[i + 1] = (byte)(sbyte)clamped;
         }
-
-        return BuildPacket(SibylCommandId.Equalizer, SubCmdSet, payload);
+        return BuildPacket(SibylCommandId.Equalizer, payload);
     }
 
     /// <summary>
-    /// 构建游戏低延迟模式切换包
+    /// 构建游戏低延迟模式切换包 (官方 ProductClient.gameSwitch)
     /// </summary>
     public static byte[] BuildGameModePacket(bool enabled)
     {
-        return BuildPacket(SibylCommandId.GameMode, SubCmdSet, [(byte)(enabled ? 1 : 0)]);
+        return BuildPacket(SibylCommandId.GameMode, [(byte)(enabled ? 1 : 0)]);
     }
 
     /// <summary>
-    /// 构建灯效模式设置包
+    /// 构建灯效模式设置包 (官方 ProductClient.ledChange)
     /// </summary>
     public static byte[] BuildLightModePacket(LightEffectConfig config)
     {
-        // Payload: [Mode (1B)], [Speed (1B)], [Brightness (1B)], [R (1B)], [G (1B)], [B (1B)]
         byte[] payload =
         [
             (byte)config.Mode,
@@ -102,73 +84,80 @@ public static class PacketBuilder
             config.Green,
             config.Blue
         ];
-        return BuildPacket(SibylCommandId.LightMode, SubCmdSet, payload);
+        return BuildPacket(SibylCommandId.LightMode, payload);
     }
 
     /// <summary>
-    /// 构建按键触控自定义配置包
+    /// 构建按键触控自定义配置包 (单手势更新: cmdID + funID)
+    /// </summary>
+    public static byte[] BuildKeySettingPacket(byte gestureEventId, byte functionCmd)
+    {
+        return BuildPacket(SibylCommandId.KeyFunction, [gestureEventId, functionCmd]);
+    }
+
+    /// <summary>
+    /// 构建批量按键手势包
     /// </summary>
     public static byte[] BuildKeySettingsPacket(EarbudKeySettings settings)
     {
-        // Payload: 左右耳分别 4 个手势的映射
+        // 左右耳各常用手势配置映射
         byte[] payload =
         [
-            // Left Earbud: Single, Double, Triple, Long
-            (byte)settings.LeftSingleTap,
-            (byte)settings.LeftDoubleTap,
-            (byte)settings.LeftTripleTap,
-            (byte)settings.LeftLongPress,
-            // Right Earbud: Single, Double, Triple, Long
-            (byte)settings.RightSingleTap,
-            (byte)settings.RightDoubleTap,
-            (byte)settings.RightTripleTap,
-            (byte)settings.RightLongPress
+            1, (byte)settings.LeftSingleTap,
+            2, (byte)settings.LeftDoubleTap,
+            3, (byte)settings.LeftTripleTap,
+            5, (byte)settings.LeftLongPress,
+            17, (byte)settings.RightSingleTap,
+            18, (byte)settings.RightDoubleTap,
+            19, (byte)settings.RightTripleTap,
+            21, (byte)settings.RightLongPress
         ];
-        return BuildPacket(SibylCommandId.KeyFunction, SubCmdSet, payload);
+        return BuildPacket(SibylCommandId.KeyFunction, payload);
     }
 
     /// <summary>
-    /// 构建寻找耳机包 (播放/停止查找音)
-    /// </summary>
-    public static byte[] BuildFindEarphonePacket(bool play)
-    {
-        return BuildPacket(SibylCommandId.FindEarphone, SubCmdSet, [(byte)(play ? 1 : 0)]);
-    }
-
-    /// <summary>
-    /// 构建定时关机包
+    /// 构建定时关机包 (官方 ProductClient.setPowerTime，2字节 Little-Endian 分钟数)
     /// </summary>
     public static byte[] BuildTimedShutdownPacket(int minutes)
     {
-        return BuildPacket(SibylCommandId.TimedShutdown, SubCmdSet, [(byte)Math.Clamp(minutes, 0, 255)]);
+        byte[] payload = [(byte)(minutes & 255), (byte)((minutes >> 8) & 255)];
+        return BuildPacket(SibylCommandId.TimedShutdown, payload);
     }
 
     /// <summary>
-    /// 构建睡眠模式开关包
+    /// 构建睡眠模式开关包 (官方 ProductClient.sendSleepMode)
     /// </summary>
     public static byte[] BuildSleepModePacket(bool enabled)
     {
-        return BuildPacket(SibylCommandId.SleepMode, SubCmdSet, [(byte)(enabled ? 1 : 0)]);
+        return BuildPacket(SibylCommandId.SleepMode, [(byte)(enabled ? 1 : 0)]);
     }
 
     /// <summary>
-    /// 构建关闭/开启触控防误触包
+    /// 构建寻找耳机包 (通过提示音音量或属性触发发声)
+    /// </summary>
+    public static byte[] BuildFindEarphonePacket(bool play)
+    {
+        return BuildPacket(SibylCommandId.ToneVolumeControl, [(byte)(play ? 100 : 0)]);
+    }
+
+    /// <summary>
+    /// 构建关闭/开启触控防误触包 (官方 ProductClient.btnTouchSwitch)
     /// </summary>
     public static byte[] BuildTouchLockPacket(bool disabled)
     {
-        return BuildPacket(SibylCommandId.CloseTouch, SubCmdSet, [(byte)(disabled ? 1 : 0)]);
+        return BuildPacket(SibylCommandId.CloseTouch, [(byte)(disabled ? 1 : 0)]);
     }
 
     /// <summary>
-    /// 构建提示音音量调节包
+    /// 构建提示音音量调节包 (官方 ProductClient.setPromptVolume)
     /// </summary>
     public static byte[] BuildToneVolumePacket(byte volume)
     {
-        return BuildPacket(SibylCommandId.ToneVolumeControl, SubCmdSet, [volume]);
+        return BuildPacket(SibylCommandId.ToneVolumeControl, [volume]);
     }
 
     /// <summary>
-    /// 构建重命名耳机蓝牙名称包
+    /// 构建重命名耳机蓝牙名称包 (官方 ProductClient.setPairName)
     /// </summary>
     public static byte[] BuildRenamePacket(string newName)
     {
@@ -177,23 +166,24 @@ public static class PacketBuilder
         {
             Array.Resize(ref bytes, 20);
         }
-        return BuildPacket(SibylCommandId.PairName, SubCmdSet, bytes);
+        return BuildPacket(SibylCommandId.PairName, bytes);
     }
 
     /// <summary>
-    /// 构建重置设置包 (恢复默认或出厂设置)
+    /// 构建重置设置包 (官方 ProductClient.resetDefaultSetting / factoryReset)
     /// </summary>
     public static byte[] BuildResetPacket(bool factoryReset)
     {
         var cmd = factoryReset ? SibylCommandId.RestoreFactorySettings : SibylCommandId.RestDefaultSettings;
-        return BuildPacket(cmd, SubCmdSet, [0x01]);
+        return BuildPacket(cmd, null);
     }
 
     /// <summary>
-    /// 构建状态查询包
+    /// 构建状态查询包 (官方 ProductClient.getAttrValue，CMDID_GETINFO = 0xFA)
     /// </summary>
-    public static byte[] BuildQueryStatusPacket()
+    public static byte[] BuildQueryStatusPacket(byte[]? queryCmdIds = null)
     {
-        return BuildPacket(SibylCommandId.QueryStatus, SubCmdGet, []);
+        queryCmdIds ??= [12, 9, 2, 14, 13, 39, 7, 32, 33];
+        return BuildPacket(SibylCommandId.QueryInfo, queryCmdIds);
     }
 }

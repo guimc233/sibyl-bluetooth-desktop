@@ -13,9 +13,10 @@ public class ProtocolTests
     {
         var packet = PacketBuilder.BuildAncPacket(AncModeType.Transparency, AncDepthLevel.Comfortable);
 
-        Assert.Equal(PacketBuilder.MagicHeader1, packet[0]);
-        Assert.Equal(PacketBuilder.MagicHeader2, packet[1]);
-        Assert.Equal((byte)SibylCommandId.AncMode, packet[2]);
+        Assert.Equal(PacketBuilder.StartByte, packet[0]); // 0xFF
+        Assert.Equal(3, packet[2]); // Len = 1(cmd) + 2(payload) = 3
+        Assert.Equal((byte)SibylCommandId.AncMode, packet[3]); // 9
+        Assert.Equal(PacketBuilder.EndByte, packet[^1]); // 0xAA
 
         var parsed = PacketParser.Parse(packet);
         Assert.True(parsed.IsSuccess);
@@ -35,12 +36,12 @@ public class ProtocolTests
     public void Test_BuildAndParse_EqPacket()
     {
         int[] originalGains = [-6, 5, -3, -2, 5, 4, -4, -3, 6, 4];
-        var packet = PacketBuilder.BuildEqPacket(originalGains);
+        var packet = PacketBuilder.BuildEqPacket(originalGains, 2);
 
         var parsed = PacketParser.Parse(packet);
         Assert.True(parsed.IsSuccess);
         Assert.Equal(SibylCommandId.Equalizer, parsed.CommandId);
-        Assert.Equal(10, parsed.Payload.Length);
+        Assert.Equal(11, parsed.Payload.Length); // 1(type) + 10(bands)
 
         var status = new DeviceStatus();
         bool applied = PacketParser.ApplyToStatus(parsed, status);
@@ -56,6 +57,7 @@ public class ProtocolTests
 
         Assert.True(parsed.IsSuccess);
         Assert.Equal(SibylCommandId.GameMode, parsed.CommandId);
+        Assert.Single(parsed.Payload);
         Assert.Equal(1, parsed.Payload[0]);
 
         var status = new DeviceStatus { IsGameModeEnabled = false };
@@ -64,14 +66,14 @@ public class ProtocolTests
     }
 
     [Fact]
-    public void Test_ChecksumValidation_RejectsCorruptedPacket()
+    public void Test_PacketValidation_RejectsCorruptedPacket()
     {
         var packet = PacketBuilder.BuildAncPacket(AncModeType.NoiseReduction);
-        packet[^1] ^= 0xFF; // 破坏 Checksum
+        packet[^1] = 0x00; // 破坏 0xAA 尾字节
 
         var parsed = PacketParser.Parse(packet);
         Assert.False(parsed.IsSuccess);
-        Assert.Contains("Checksum mismatch", parsed.ErrorMessage);
+        Assert.Contains("Invalid 0xAA", parsed.ErrorMessage);
     }
 
     [Fact]

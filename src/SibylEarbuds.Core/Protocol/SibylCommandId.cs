@@ -1,27 +1,31 @@
 namespace SibylEarbuds.Core.Protocol;
 
 /// <summary>
-/// SIBYL 耳机协议核心指令 ID (从 APK 反编译资源和逻辑逆向得出)
+/// SIBYL 耳机协议核心指令 ID (严格匹配官方 ProductClient.kt)
 /// </summary>
 public enum SibylCommandId : byte
 {
-    QueryStatus = 0x00,                 // 查询状态与电量
-    KeyFunction = 0x01,                // 自定义按键/触控功能
-    Equalizer = 0x02,                  // 10段音乐均衡器设置
-    FindEarphone = 0x03,               // 寻找耳机 (播放声音/停止)
-    RestDefaultSettings = 0x04,        // 恢复默认设置
-    ClearPairingRecords = 0x05,        // 清除配对记录
-    RestoreFactorySettings = 0x06,     // 恢复出厂设置
-    CloseTouch = 0x07,                 // 关闭触控功能
-    AncMode = 0x09,                    // ANC降噪模式切换
-    LightMode = 0x0A,                  // 灯效模式设置
-    FirmwareVersion = 0x0D,            // 固件版本读取
-    GameMode = 0x0E,                   // 低延迟游戏模式开关
-    VolumeControl = 0x0F,              // 基础音量控制
-    TimedShutdown = 0x20,              // 定时关机 (分钟数)
-    SleepMode = 0x21,                  // 睡眠模式开关
-    PairName = 0x27,                   // 修改设备蓝牙名称
-    ToneVolumeControl = 0x29,          // 提示音音量调节
-    SomatosensoryControl = 0x4C,       // 体感控制
-    LdacHiRes = 0x4D                   // 高清解码开关
+    KeyFunction = 1,             // 自定义按键功能 (CMDID_keyfunc)
+    Equalizer = 2,               // 10段音乐均衡器设置 (CMDID_EQ)
+    RestDefaultSettings = 4,     // 恢复默认设置 (CMDID_reset)
+    ClearPairingRecords = 5,     // 清除配对记录 (CMDID_clear)
+    RestoreFactorySettings = 6,  // 恢复出厂设置 (CMDID_factory)
+    CloseTouch = 7,              // 关闭触控防误触 (CMDID_touch)
+    InEarDetection = 8,          // 入耳检测 (CMDID_inear)
+    AncMode = 9,                 // ANC降噪模式切换 (CMDID_anc)
+    LightMode = 10,              // 灯效模式设置 (CMDID_led)
+    Battery = 12,                // 电池电量状态 (CMDID_battery)
+    FirmwareVersion = 13,        // 固件版本读取 (CMDID_version)
+    GameMode = 14,               // 低延迟游戏模式开关 (CMDID_game)
+    VolumeControl = 15,          // 基础音量控制 (CMDID_volume)
+    LedSwitch = 16,              // 灯效开关 (CMDID_ledSwitch)
+    TimedShutdown = 32,          // 定时关机分钟数 (CMDID_PowerOff)
+    SleepMode = 33,              // 睡眠模式开关 (CMDID_SleepMode)
+    PairName = 39,               // 修改蓝牙设备名称 (CMDID_ChangePairName)
+    ToneVolumeControl = 41,      // 提示音音量调节 (CMDID_PROMPT)
+    HifiMode = 42,               // HiFi 模式 (CMDID_HifiMode)
+    Somatosensory1 = 77,         // 点头体感控制 (CMDID_SomatonControl1)
+    Somatosensory2 = 79,         // 摇头体感控制 (CMDID_SomatonControl2)
+    Somatosensory3 = 81,         // 转头体感控制 (CMDID_SomatonControl3)
+    QueryInfo = 0xFA             // 查询设备属性信息 (CMDID_GETINFO = -6 = 0xFA)
 }

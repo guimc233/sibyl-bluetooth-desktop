@@ -42,6 +42,14 @@ public class AntiConflictDispatcher : IDisposable
             LogMessage?.Invoke($"[BLE-TX] 发送关键指令 {commandId} (Len: {packet.Length} B)");
             bool success = await _transport.WriteCharacteristicAsync(packet, writeWithoutResponse);
             _lastSendTime = DateTime.UtcNow;
+            if (success)
+            {
+                LogMessage?.Invoke($"[BLE-TX-OK] {commandId} 写入耳机成功");
+            }
+            else
+            {
+                LogMessage?.Invoke($"[BLE-TX-WARN] {commandId} 写入未成功，请检查蓝牙特征通道");
+            }
             CommandSent?.Invoke(commandId, success);
             return success;
         }
