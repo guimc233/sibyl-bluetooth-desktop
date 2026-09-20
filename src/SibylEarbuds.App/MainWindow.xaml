@@ -1,0 +1,384 @@
+<Window x:Class="SibylEarbuds.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:SibylEarbuds.App"
+        xmlns:vm="clr-namespace:SibylEarbuds.App.ViewModels"
+        xmlns:controls="clr-namespace:SibylEarbuds.App.Controls"
+        xmlns:converters="clr-namespace:SibylEarbuds.App.Converters"
+        mc:Ignorable="d"
+        Title="SIBYL MUSIC - 电脑版耳机控制中枢 (Windows 10/11)" 
+        Height="780" Width="1100" MinHeight="700" MinWidth="980"
+        WindowStartupLocation="CenterScreen"
+        Background="#0F172A" Foreground="#F8FAFC">
+
+    <Window.DataContext>
+        <vm:MainViewModel/>
+    </Window.DataContext>
+
+    <Window.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVis"/>
+        <converters:ReverseBoolConverter x:Key="RevBool"/>
+
+        <!-- 现代半透明卡片样式 -->
+        <Style x:Key="FluentCard" TargetType="Border">
+            <Setter Property="Background" Value="#1E293B"/>
+            <Setter Property="CornerRadius" Value="16"/>
+            <Setter Property="BorderBrush" Value="#334155"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="18"/>
+            <Setter Property="Margin" Value="0,0,0,16"/>
+        </Style>
+
+        <!-- 扁平现代按钮样式 -->
+        <Style x:Key="AccentButton" TargetType="Button">
+            <Setter Property="Background" Value="#2563EB"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="14,8"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 次级幽灵按钮样式 -->
+        <Style x:Key="GhostButton" TargetType="Button">
+            <Setter Property="Background" Value="#334155"/>
+            <Setter Property="Foreground" Value="#E2E8F0"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/> <!-- 顶栏 -->
+            <RowDefinition Height="Auto"/> <!-- 安全隔离横幅 -->
+            <RowDefinition Height="*"/>    <!-- 主体多卡片区域 -->
+            <RowDefinition Height="120"/>  <!-- 底部日志控制台 -->
+        </Grid.RowDefinitions>
+
+        <!-- 1. 顶部 Header -->
+        <Grid Grid.Row="0" Margin="0,0,0,14">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- 左侧品牌与设备名称 -->
+            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                <Border Width="42" Height="42" Background="#2563EB" CornerRadius="12" Margin="0,0,12,0">
+                    <TextBlock Text="🎧" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+                <StackPanel VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding DeviceName}" FontSize="18" FontWeight="Bold" Foreground="#F8FAFC"/>
+                        <Border Background="#059669" CornerRadius="4" Padding="6,2" Margin="10,0,0,0"
+                                Visibility="{Binding IsConnected, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="已连接" FontSize="11" Foreground="White" FontWeight="SemiBold"/>
+                        </Border>
+                        <Border Background="#DC2626" CornerRadius="4" Padding="6,2" Margin="10,0,0,0"
+                                Visibility="{Binding IsConnected, Converter={StaticResource BoolToVis}, ConverterParameter=Rev}">
+                            <TextBlock Text="未连接" FontSize="11" Foreground="White" FontWeight="SemiBold"/>
+                        </Border>
+                    </StackPanel>
+                    <TextBlock Text="{Binding FirmwareVersion, StringFormat='固件版本: {0}'}" FontSize="12" Foreground="#94A3B8"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- 右侧操作栏 -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button Content="切换模拟/真实模式" Command="{Binding SwitchTransportCommand}" 
+                        Style="{StaticResource GhostButton}" Margin="0,0,10,0"/>
+                <Button Content="搜索设备" Command="{Binding ScanCommand}" 
+                        Style="{StaticResource GhostButton}" Margin="0,0,10,0"/>
+                <Button Content="连接耳机" Command="{Binding ConnectCommand}" 
+                        Style="{StaticResource AccentButton}" Margin="0,0,10,0"
+                        Visibility="{Binding IsConnected, Converter={StaticResource BoolToVis}, ConverterParameter=Rev}"/>
+                <Button Content="断开连接" Command="{Binding DisconnectCommand}" 
+                        Style="{StaticResource GhostButton}"
+                        Visibility="{Binding IsConnected, Converter={StaticResource BoolToVis}}"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- 2. 音频防打架安全说明横幅 -->
+        <Border Grid.Row="1" Background="#132E27" BorderBrush="#059669" BorderThickness="1" CornerRadius="8" Padding="12,6" Margin="0,0,0,14">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="🛡️ 防音频打架机制已激活:" FontWeight="Bold" Foreground="#34D399" FontSize="12" Margin="0,0,8,0"/>
+                <TextBlock Text="指令完全基于独立 WinRT BLE GATT 特征通道发送 (带 80ms 智能防抖限流)，与 Windows A2DP 音乐音频流物理隔离，无 COM 串口占用，听歌打游戏零卡顿！" 
+                           Foreground="#A7F3D0" FontSize="12"/>
+            </StackPanel>
+        </Border>
+
+        <!-- 3. 主体工作区 -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="340"/> <!-- 左侧栏：电量 + ANC + 快捷功能 -->
+                <ColumnDefinition Width="16"/>
+                <ColumnDefinition Width="*"/>   <!-- 右侧栏：10段专业 EQ + 按键 + 灯光 -->
+            </Grid.ColumnDefinitions>
+
+            <!-- 左侧内容 -->
+            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <!-- 卡片 1: 电量 -->
+                    <Border Style="{StaticResource FluentCard}">
+                        <StackPanel>
+                            <TextBlock Text="耳机电量状态" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,14"/>
+                            <UniformGrid Columns="3">
+                                <controls:BatteryRingControl Battery="{Binding LeftBattery}" Label="左耳 (L)" IsCharging="{Binding IsLeftCharging}"/>
+                                <controls:BatteryRingControl Battery="{Binding RightBattery}" Label="右耳 (R)" IsCharging="{Binding IsRightCharging}"/>
+                                <controls:BatteryRingControl Battery="{Binding CaseBattery}" Label="充电盒" IsCharging="{Binding IsCaseCharging}"/>
+                            </UniformGrid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 卡片 2: ANC 降噪模式 -->
+                    <Border Style="{StaticResource FluentCard}">
+                        <StackPanel>
+                            <TextBlock Text="降噪控制 (ANC)" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,12"/>
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Button Grid.Column="0" Content="🛡️ 降噪" Command="{Binding SetAncCommand}" CommandParameter="1" 
+                                        Style="{StaticResource GhostButton}" Margin="0,0,4,0"/>
+                                <Button Grid.Column="1" Content="🍃 普通" Command="{Binding SetAncCommand}" CommandParameter="2" 
+                                        Style="{StaticResource GhostButton}" Margin="2,0,2,0"/>
+                                <Button Grid.Column="2" Content="🔊 通透" Command="{Binding SetAncCommand}" CommandParameter="3" 
+                                        Style="{StaticResource GhostButton}" Margin="4,0,0,0"/>
+                            </Grid>
+                            <TextBlock Text="降噪强度: 深度降噪 (100%)" FontSize="11" Foreground="#94A3B8"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 卡片 3: 常用辅助开关 -->
+                    <Border Style="{StaticResource FluentCard}">
+                        <StackPanel>
+                            <TextBlock Text="功能快捷控制" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,12"/>
+
+                            <!-- 游戏低延迟模式 -->
+                            <DockPanel Margin="0,0,0,10">
+                                <TextBlock Text="🎮 游戏模式 (低延迟 38ms)" VerticalAlignment="Center"/>
+                                <CheckBox IsChecked="{Binding IsGameMode}" Command="{Binding ToggleGameModeCommand}" 
+                                          HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                            </DockPanel>
+
+                            <!-- 触控锁定 -->
+                            <DockPanel Margin="0,0,0,10">
+                                <TextBlock Text="🔒 触控防误触锁定" VerticalAlignment="Center"/>
+                                <CheckBox IsChecked="{Binding IsTouchDisabled}" Command="{Binding ToggleTouchLockCommand}" 
+                                          HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                            </DockPanel>
+
+                            <!-- 寻找耳机 -->
+                            <DockPanel Margin="0,0,0,10">
+                                <TextBlock Text="🔔 寻找耳机 (播放声音)" VerticalAlignment="Center"/>
+                                <Button Content="{Binding IsFindingEarphone, Converter={StaticResource BoolToVis}}" 
+                                        Command="{Binding ToggleFindEarphoneCommand}" Style="{StaticResource GhostButton}" HorizontalAlignment="Right"/>
+                            </DockPanel>
+
+                            <!-- 定时关机 -->
+                            <DockPanel>
+                                <TextBlock Text="⏱️ 定时自动关机" VerticalAlignment="Center"/>
+                                <ComboBox SelectedIndex="0" HorizontalAlignment="Right" Width="100" Background="#334155" Foreground="White">
+                                    <ComboBoxItem Content="不开启"/>
+                                    <ComboBoxItem Content="15 分钟"/>
+                                    <ComboBoxItem Content="30 分钟"/>
+                                    <ComboBoxItem Content="60 分钟"/>
+                                </ComboBox>
+                            </DockPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- 右侧内容 -->
+            <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <!-- 卡片 4: 10段音乐均衡器 EQ -->
+                    <Border Style="{StaticResource FluentCard}">
+                        <StackPanel>
+                            <DockPanel Margin="0,0,0,14">
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="10 段专业音乐均衡器 (EQ)" FontSize="15" FontWeight="Bold"/>
+                                    <TextBlock Text="增益范围 -8dB ~ +8dB | 支持 Realtek &amp; 杰理硬件 DSP 滤波器实时计算" FontSize="11" Foreground="#94A3B8"/>
+                                </StackPanel>
+                                <ComboBox ItemsSource="{Binding EqPresets}" SelectedItem="{Binding SelectedEqPreset}" 
+                                          DisplayMemberPath="Name" HorizontalAlignment="Right" Width="150" 
+                                          Background="#334155" Foreground="White" VerticalAlignment="Center"/>
+                            </DockPanel>
+
+                            <!-- 10个滑块网格 -->
+                            <UniformGrid Columns="10" Height="200" Margin="0,10">
+                                <!-- 31Hz -->
+                                <StackPanel HorizontalAlignment="Center">
+                                    <TextBlock Text="{Binding EqBand0, StringFormat='{0}dB'}" FontSize="10" Foreground="#38BDF8" HorizontalAlignment="Center"/>
+                                    <Slider Value="{Binding EqBand0}" Minimum="-8" Maximum="8" Orientation="Vertical" Height="150" Margin="0,4"/>
+                                    <TextBlock Text="31" FontSize="10" Foreground="#94A3B8" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                                <!-- 62Hz -->
+                                <StackPanel HorizontalAlignment="Center">
+                                    <TextBlock Text="{Binding EqBand1, StringFormat='{0}dB'}" FontSize="10" Foreground="#38BDF8" HorizontalAlignment="Center"/>
+                                    <Slider Value="{Binding EqBand1}" Minimum="-8" Maximum="8" Orientation="Vertical" Height="150" Margin="0,4"/>
+                                    <TextBlock Text="62" FontSize="10" Foreground="#94A3B8" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                                <!-- 125Hz -->
+                                <StackPanel HorizontalAlignment="Center">
+                                    <TextBlock Text="{Binding EqBand2, StringFormat='{0}dB'}" FontSize="10" Foreground="#38BDF8" HorizontalAlignment="Center"/>
+                                    <Slider Value="{Binding EqBand2}" Minimum="-8" Maximum="8" Orientation="Vertical" Height="150" Margin="0,4"/>
+                                    <TextBlock Text="125" FontSize="10" Foreground="#94A3B8" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                                <!-- 250Hz -->
+                                <StackPanel HorizontalAlignment="Center">
+                                    <TextBlock Text="{Binding EqBand3, StringFormat='{0}dB'}" FontSize="10" Foreground="#38BDF8" HorizontalAlignment="Center"/>
+                                    <Slider Value="{Binding EqBand3}" Minimum="-8" Maximum="8" Orientation="Vertical" Height="150" Margin="0,4"/>
+                                    <TextBlock Text="250" FontSize="10" Foreground="#94A3B8" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                                <!-- 500Hz -->
+                                <StackPanel HorizontalAlignment="Center">
+                                    <TextBlock Text="{Binding EqBand4, StringFormat='{0}dB'}" FontSize="10" Foreground="#38BDF8" HorizontalAlignment="Center"/>
+                                    <Slider Value="{Binding EqBand4}" Minimum="-8" Maximum="8" Orientation="Vertical" Height="150" Margin="0,4"/>
+                                    <TextBlock Text="500" FontSize="10" Foreground="#94A3B8" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                                <!-- 1kHz -->
+                                <StackPanel HorizontalAlignment="Center">
+                                    <TextBlock Text="{Binding EqBand5, StringFormat='{0}dB'}" FontSize="10" Foreground="#38BDF8" HorizontalAlignment="Center"/>
+                                    <Slider Value="{Binding EqBand5}" Minimum="-8" Maximum="8" Orientation="Vertical" Height="150" Margin="0,4"/>
+                                    <TextBlock Text="1k" FontSize="10" Foreground="#94A3B8" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                                <!-- 2kHz -->
+                                <StackPanel HorizontalAlignment="Center">
+                                    <TextBlock Text="{Binding EqBand6, StringFormat='{0}dB'}" FontSize="10" Foreground="#38BDF8" HorizontalAlignment="Center"/>
+                                    <Slider Value="{Binding EqBand6}" Minimum="-8" Maximum="8" Orientation="Vertical" Height="150" Margin="0,4"/>
+                                    <TextBlock Text="2k" FontSize="10" Foreground="#94A3B8" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                                <!-- 4kHz -->
+                                <StackPanel HorizontalAlignment="Center">
+                                    <TextBlock Text="{Binding EqBand7, StringFormat='{0}dB'}" FontSize="10" Foreground="#38BDF8" HorizontalAlignment="Center"/>
+                                    <Slider Value="{Binding EqBand7}" Minimum="-8" Maximum="8" Orientation="Vertical" Height="150" Margin="0,4"/>
+                                    <TextBlock Text="4k" FontSize="10" Foreground="#94A3B8" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                                <!-- 8kHz -->
+                                <StackPanel HorizontalAlignment="Center">
+                                    <TextBlock Text="{Binding EqBand8, StringFormat='{0}dB'}" FontSize="10" Foreground="#38BDF8" HorizontalAlignment="Center"/>
+                                    <Slider Value="{Binding EqBand8}" Minimum="-8" Maximum="8" Orientation="Vertical" Height="150" Margin="0,4"/>
+                                    <TextBlock Text="8k" FontSize="10" Foreground="#94A3B8" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                                <!-- 16kHz -->
+                                <StackPanel HorizontalAlignment="Center">
+                                    <TextBlock Text="{Binding EqBand9, StringFormat='{0}dB'}" FontSize="10" Foreground="#38BDF8" HorizontalAlignment="Center"/>
+                                    <Slider Value="{Binding EqBand9}" Minimum="-8" Maximum="8" Orientation="Vertical" Height="150" Margin="0,4"/>
+                                    <TextBlock Text="16k" FontSize="10" Foreground="#94A3B8" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </UniformGrid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 卡片 5: 按键手势映射 & RGB 灯光效果 -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="16"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- 左按键映射 -->
+                        <Border Grid.Column="0" Style="{StaticResource FluentCard}">
+                            <StackPanel>
+                                <TextBlock Text="按键触控自定义" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                <Grid Margin="0,0,0,6">
+                                    <TextBlock Text="左耳双击:" VerticalAlignment="Center" FontSize="12"/>
+                                    <ComboBox SelectedIndex="1" HorizontalAlignment="Right" Width="120" Background="#334155" Foreground="White">
+                                        <ComboBoxItem Content="播放/暂停"/>
+                                        <ComboBoxItem Content="上一曲"/>
+                                        <ComboBoxItem Content="下一曲"/>
+                                        <ComboBoxItem Content="语音助手"/>
+                                    </ComboBox>
+                                </Grid>
+                                <Grid Margin="0,0,0,6">
+                                    <TextBlock Text="右耳双击:" VerticalAlignment="Center" FontSize="12"/>
+                                    <ComboBox SelectedIndex="2" HorizontalAlignment="Right" Width="120" Background="#334155" Foreground="White">
+                                        <ComboBoxItem Content="播放/暂停"/>
+                                        <ComboBoxItem Content="上一曲"/>
+                                        <ComboBoxItem Content="下一曲"/>
+                                        <ComboBoxItem Content="语音助手"/>
+                                    </ComboBox>
+                                </Grid>
+                                <Grid Margin="0,0,0,6">
+                                    <TextBlock Text="左耳长按:" VerticalAlignment="Center" FontSize="12"/>
+                                    <ComboBox SelectedIndex="0" HorizontalAlignment="Right" Width="120" Background="#334155" Foreground="White">
+                                        <ComboBoxItem Content="ANC降噪切换"/>
+                                        <ComboBoxItem Content="游戏模式"/>
+                                        <ComboBoxItem Content="音量+"/>
+                                    </ComboBox>
+                                </Grid>
+                                <Button Content="保存手势配置" Command="{Binding SaveKeySettingsCommand}" Style="{StaticResource GhostButton}" Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 右灯效配置 -->
+                        <Border Grid.Column="2" Style="{StaticResource FluentCard}">
+                            <StackPanel>
+                                <TextBlock Text="RGB 炫彩灯效控制" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                <UniformGrid Columns="3" Margin="0,0,0,10">
+                                    <RadioButton Content="常亮" GroupName="LightMode" Foreground="White"/>
+                                    <RadioButton Content="呼吸" IsChecked="True" GroupName="LightMode" Foreground="White"/>
+                                    <RadioButton Content="关闭" GroupName="LightMode" Foreground="White"/>
+                                </UniformGrid>
+                                <DockPanel Margin="0,0,0,8">
+                                    <TextBlock Text="呼吸速度 (0-7):" VerticalAlignment="Center" FontSize="12"/>
+                                    <Slider Value="{Binding LightSpeed}" Minimum="0" Maximum="7" Width="120" HorizontalAlignment="Right"/>
+                                </DockPanel>
+                                <DockPanel>
+                                    <TextBlock Text="灯光亮度 (0-100%):" VerticalAlignment="Center" FontSize="12"/>
+                                    <Slider Value="{Binding LightBrightness}" Minimum="0" Maximum="100" Width="120" HorizontalAlignment="Right"/>
+                                </DockPanel>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
+        <!-- 4. 底部实时协议与通信控制台 -->
+        <Border Grid.Row="3" Background="#0B1120" CornerRadius="12" BorderBrush="#1E293B" BorderThickness="1" Padding="10" Margin="0,10,0,0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,6">
+                    <TextBlock Text="📡 通信监控与调度日志" FontSize="11" FontWeight="Bold" Foreground="#38BDF8"/>
+                    <TextBlock Text="(所有数据帧均在独立后台线程调度，发包耗时 < 5ms，杜绝 A2DP 丢帧)" FontSize="11" Foreground="#64748B" Margin="10,0,0,0"/>
+                </StackPanel>
+                <ListBox Grid.Row="1" ItemsSource="{Binding LogLines}" Background="Transparent" BorderThickness="0"
+                         Foreground="#94A3B8" FontFamily="Consolas, Cascadia Code, Courier New" FontSize="11"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

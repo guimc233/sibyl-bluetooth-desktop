@@ -1,0 +1,227 @@
+using SibylEarbuds.Core.Dispatcher;
+using SibylEarbuds.Core.Models;
+using SibylEarbuds.Core.Protocol;
+using SibylEarbuds.Core.Transport;
+
+namespace SibylEarbuds.Core.Services;
+
+public class EarbudDeviceService : IDisposable
+{
+    public IBleTransport Transport { get; }
+    public AntiConflictDispatcher Dispatcher { get; }
+    public DeviceStatus CurrentStatus { get; } = new();
+
+    public event Action<DeviceStatus>? StatusUpdated;
+    public event Action<string>? LogMessage;
+
+    public EarbudDeviceService(IBleTransport transport)
+    {
+        Transport = transport;
+        Dispatcher = new AntiConflictDispatcher(transport);
+
+        Transport.OnDataReceived += HandleIncomingBleData;
+        Transport.OnConnectionStateChanged += HandleConnectionStateChanged;
+        Transport.OnLog += msg => LogMessage?.Invoke(msg);
+        Dispatcher.LogMessage += msg => LogMessage?.Invoke(msg);
+    }
+
+    public async Task<IReadOnlyList<DiscoveredBleDevice>> ScanDevicesAsync(int timeoutMs = 4000)
+    {
+        return await Transport.ScanDevicesAsync(timeoutMs);
+    }
+
+    public async Task<bool> ConnectAsync(string deviceId)
+    {
+        bool success = await Transport.ConnectAsync(deviceId);
+        if (success)
+        {
+            CurrentStatus.IsConnected = true;
+            CurrentStatus.MacAddress = deviceId;
+            CurrentStatus.DeviceName = Transport.ConnectedDeviceName ?? "SIBYL Earbuds";
+            StatusUpdated?.Invoke(CurrentStatus);
+
+            // 查询一次设备最新状态
+            await Task.Delay(200);
+            var queryPacket = PacketBuilder.BuildQueryStatusPacket();
+            await Dispatcher.SendCriticalCommandAsync(SibylCommandId.QueryStatus, queryPacket);
+        }
+        return success;
+    }
+
+    public async Task DisconnectAsync()
+    {
+        await Transport.DisconnectAsync();
+        CurrentStatus.IsConnected = false;
+        StatusUpdated?.Invoke(CurrentStatus);
+    }
+
+    /// <summary>
+    /// 切换降噪模式（ANC/普通/通透）- 走独立 BLE，不打断音频
+    /// </summary>
+    public async Task<bool> SetAncModeAsync(AncModeType mode, AncDepthLevel depth = AncDepthLevel.Deep)
+    {
+        CurrentStatus.Anc = new AncState(mode, depth);
+        StatusUpdated?.Invoke(CurrentStatus);
+
+        var packet = PacketBuilder.BuildAncPacket(mode, depth);
+        return await Dispatcher.SendCriticalCommandAsync(SibylCommandId.AncMode, packet);
+    }
+
+    /// <summary>
+    /// 实时调整 10 段均衡器增益（带 80ms 防抖限流，防频次过高）
+    /// </summary>
+    public void SetEqGains(int[] gains)
+    {
+        CurrentStatus.CurrentEq.Gains = (int[])gains.Clone();
+        CurrentStatus.CurrentEq.PresetId = 0;
+        CurrentStatus.CurrentEq.Name = "自定义";
+        StatusUpdated?.Invoke(CurrentStatus);
+
+        var packet = PacketBuilder.BuildEqPacket(gains);
+        Dispatcher.EnqueueDebouncedCommand(SibylCommandId.Equalizer, packet);
+    }
+
+    /// <summary>
+    /// 应用 EQ 预设模式（经典、摇滚、抒情等）
+    /// </summary>
+    public async Task<bool> ApplyEqPresetAsync(EqConfiguration preset)
+    {
+        CurrentStatus.CurrentEq = new EqConfiguration(preset.Name, preset.PresetId, preset.Gains);
+        StatusUpdated?.Invoke(CurrentStatus);
+
+        var packet = PacketBuilder.BuildEqPacket(preset.Gains);
+        return await Dispatcher.SendCriticalCommandAsync(SibylCommandId.Equalizer, packet);
+    }
+
+    /// <summary>
+    /// 开启/关闭低延迟游戏模式
+    /// </summary>
+    public async Task<bool> SetGameModeAsync(bool enabled)
+    {
+        CurrentStatus.IsGameModeEnabled = enabled;
+        StatusUpdated?.Invoke(CurrentStatus);
+
+        var packet = PacketBuilder.BuildGameModePacket(enabled);
+        return await Dispatcher.SendCriticalCommandAsync(SibylCommandId.GameMode, packet);
+    }
+
+    /// <summary>
+    /// 调整灯光效果（呼吸/常亮/关闭/颜色）
+    /// </summary>
+    public void SetLightEffect(LightEffectConfig config)
+    {
+        CurrentStatus.LightEffect = config;
+        StatusUpdated?.Invoke(CurrentStatus);
+
+        var packet = PacketBuilder.BuildLightModePacket(config);
+        Dispatcher.EnqueueDebouncedCommand(SibylCommandId.LightMode, packet);
+    }
+
+    /// <summary>
+    /// 保存按键自定义映射
+    /// </summary>
+    public async Task<bool> SaveKeySettingsAsync(EarbudKeySettings settings)
+    {
+        CurrentStatus.KeySettings = settings;
+        StatusUpdated?.Invoke(CurrentStatus);
+
+        var packet = PacketBuilder.BuildKeySettingsPacket(settings);
+        return await Dispatcher.SendCriticalCommandAsync(SibylCommandId.KeyFunction, packet);
+    }
+
+    /// <summary>
+    /// 开启/关闭触控锁定（防误触）
+    /// </summary>
+    public async Task<bool> SetTouchLockAsync(bool disabled)
+    {
+        CurrentStatus.IsTouchDisabled = disabled;
+        StatusUpdated?.Invoke(CurrentStatus);
+
+        var packet = PacketBuilder.BuildTouchLockPacket(disabled);
+        return await Dispatcher.SendCriticalCommandAsync(SibylCommandId.CloseTouch, packet);
+    }
+
+    /// <summary>
+    /// 查找耳机（播放/停止警报提示音）
+    /// </summary>
+    public async Task<bool> FindEarphonesAsync(bool play)
+    {
+        var packet = PacketBuilder.BuildFindEarphonePacket(play);
+        return await Dispatcher.SendCriticalCommandAsync(SibylCommandId.FindEarphone, packet);
+    }
+
+    /// <summary>
+    /// 设置定时关机 (分钟)
+    /// </summary>
+    public async Task<bool> SetTimedShutdownAsync(int minutes)
+    {
+        CurrentStatus.TimedShutdownMinutes = minutes;
+        StatusUpdated?.Invoke(CurrentStatus);
+
+        var packet = PacketBuilder.BuildTimedShutdownPacket(minutes);
+        return await Dispatcher.SendCriticalCommandAsync(SibylCommandId.TimedShutdown, packet);
+    }
+
+    /// <summary>
+    /// 睡眠模式
+    /// </summary>
+    public async Task<bool> SetSleepModeAsync(bool enabled)
+    {
+        CurrentStatus.IsSleepModeEnabled = enabled;
+        StatusUpdated?.Invoke(CurrentStatus);
+
+        var packet = PacketBuilder.BuildSleepModePacket(enabled);
+        return await Dispatcher.SendCriticalCommandAsync(SibylCommandId.SleepMode, packet);
+    }
+
+    /// <summary>
+    /// 重命名耳机
+    /// </summary>
+    public async Task<bool> RenameDeviceAsync(string newName)
+    {
+        CurrentStatus.DeviceName = newName;
+        StatusUpdated?.Invoke(CurrentStatus);
+
+        var packet = PacketBuilder.BuildRenamePacket(newName);
+        return await Dispatcher.SendCriticalCommandAsync(SibylCommandId.PairName, packet);
+    }
+
+    /// <summary>
+    /// 恢复出厂设置或默认设置
+    /// </summary>
+    public async Task<bool> ResetSettingsAsync(bool factoryReset)
+    {
+        var packet = PacketBuilder.BuildResetPacket(factoryReset);
+        return await Dispatcher.SendCriticalCommandAsync(
+            factoryReset ? SibylCommandId.RestoreFactorySettings : SibylCommandId.RestDefaultSettings,
+            packet
+        );
+    }
+
+    private void HandleIncomingBleData(byte[] raw)
+    {
+        var result = PacketParser.Parse(raw);
+        if (result.IsSuccess)
+        {
+            bool modified = PacketParser.ApplyToStatus(result, CurrentStatus);
+            if (modified)
+            {
+                StatusUpdated?.Invoke(CurrentStatus);
+            }
+        }
+    }
+
+    private void HandleConnectionStateChanged(bool isConnected)
+    {
+        CurrentStatus.IsConnected = isConnected;
+        StatusUpdated?.Invoke(CurrentStatus);
+    }
+
+    public void Dispose()
+    {
+        Transport.OnDataReceived -= HandleIncomingBleData;
+        Transport.OnConnectionStateChanged -= HandleConnectionStateChanged;
+        Dispatcher.Dispose();
+        Transport.Dispose();
+    }
+}

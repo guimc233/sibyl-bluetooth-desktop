@@ -1,0 +1,19 @@
+# Visual Studio / .NET
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+*.nupkg
+
+# Python / Tools temp
+/tmp/
+*.apk
+*.dex
+*.so
+
+# OS files
+.DS_Store
+Thumbs.db

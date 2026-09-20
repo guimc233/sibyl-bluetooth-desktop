@@ -1,0 +1,43 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{657CBA14-C600-4B14-A764-F1FD1555F1C8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SibylEarbuds.Core", "src\SibylEarbuds.Core\SibylEarbuds.Core.csproj", "{05EA54D2-DC37-4961-8471-5F2A25DB4BD1}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{95F3CC90-06F1-47D1-83C5-C9935EDCB8B4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SibylEarbuds.Core.Tests", "tests\SibylEarbuds.Core.Tests\SibylEarbuds.Core.Tests.csproj", "{DDA6572A-59F6-4586-B5C1-6407940F1B45}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SibylEarbuds.App", "src\SibylEarbuds.App\SibylEarbuds.App.csproj", "{F9360359-6A5F-4A34-83F2-707346EC0926}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{05EA54D2-DC37-4961-8471-5F2A25DB4BD1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{05EA54D2-DC37-4961-8471-5F2A25DB4BD1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{05EA54D2-DC37-4961-8471-5F2A25DB4BD1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{05EA54D2-DC37-4961-8471-5F2A25DB4BD1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DDA6572A-59F6-4586-B5C1-6407940F1B45}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DDA6572A-59F6-4586-B5C1-6407940F1B45}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DDA6572A-59F6-4586-B5C1-6407940F1B45}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DDA6572A-59F6-4586-B5C1-6407940F1B45}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F9360359-6A5F-4A34-83F2-707346EC0926}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F9360359-6A5F-4A34-83F2-707346EC0926}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F9360359-6A5F-4A34-83F2-707346EC0926}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F9360359-6A5F-4A34-83F2-707346EC0926}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{05EA54D2-DC37-4961-8471-5F2A25DB4BD1} = {657CBA14-C600-4B14-A764-F1FD1555F1C8}
+		{DDA6572A-59F6-4586-B5C1-6407940F1B45} = {95F3CC90-06F1-47D1-83C5-C9935EDCB8B4}
+		{F9360359-6A5F-4A34-83F2-707346EC0926} = {657CBA14-C600-4B14-A764-F1FD1555F1C8}
+	EndGlobalSection
+EndGlobal
