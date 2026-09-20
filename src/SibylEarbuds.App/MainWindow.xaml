@@ -21,7 +21,7 @@
     <Window.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVis"/>
         <converters:ReverseBoolConverter x:Key="RevBool"/>
-        <converters:EqualsConverter x:Key="EqualsConv"/>
+        <converters:PageToVisibilityConverter x:Key="PageToVis"/>
 
         <!-- WinUI 3 / Windows 11 Acrylic Mica 卡片样式 -->
         <Style x:Key="UwpCard" TargetType="Border">
@@ -124,9 +124,9 @@
                 <!-- 左侧：返回箭头 (仅在详情页显示) + App Logo 与当前状态 -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                     <!-- 返回发现页按钮 -->
-                    <Button Content="" FontFamily="Segoe MDL2 Assets" FontSize="14" Width="36" Height="36" Margin="0,0,12,0"
+                    <Button Content="←" FontSize="14" FontWeight="Bold" Width="36" Height="36" Margin="0,0,12,0"
                             Style="{StaticResource FluentStandardButton}" Command="{Binding BackToDiscoveryCommand}"
-                            Visibility="{Binding CurrentPage, Converter={StaticResource EqualsConv}, ConverterParameter=DeviceDashboard, Converter={StaticResource BoolToVis}}"/>
+                            Visibility="{Binding CurrentPage, Converter={StaticResource PageToVis}, ConverterParameter=DeviceDashboard}"/>
 
                     <Border Width="34" Height="34" CornerRadius="6" Background="#2B2B2B" BorderBrush="#383838" BorderThickness="1" Margin="0,0,10,0" Padding="3">
                         <Image Source="Resources/Images/app_logo.png" Stretch="Uniform"/>
@@ -160,7 +160,7 @@
             </Grid>
 
             <!-- 2. 页面 1：周边设备独立发现与自动扫描页 (DeviceDiscovery) -->
-            <Grid Grid.Row="1" Visibility="{Binding CurrentPage, Converter={StaticResource EqualsConv}, ConverterParameter=DeviceDiscovery, Converter={StaticResource BoolToVis}}">
+            <Grid Grid.Row="1" Visibility="{Binding CurrentPage, Converter={StaticResource PageToVis}, ConverterParameter=DeviceDiscovery}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
@@ -237,7 +237,7 @@
             </Grid>
 
             <!-- 3. 页面 2：耳机深度控制中枢 (DeviceDashboard) -->
-            <Grid Grid.Row="1" Visibility="{Binding CurrentPage, Converter={StaticResource EqualsConv}, ConverterParameter=DeviceDashboard, Converter={StaticResource BoolToVis}}">
+            <Grid Grid.Row="1" Visibility="{Binding CurrentPage, Converter={StaticResource PageToVis}, ConverterParameter=DeviceDashboard}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="340"/> <!-- 左栏：造型与电量 + ANC + 快速切换 -->
                     <ColumnDefinition Width="16"/>
