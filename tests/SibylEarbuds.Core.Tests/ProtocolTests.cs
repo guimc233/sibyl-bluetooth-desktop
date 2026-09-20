@@ -115,22 +115,25 @@ public class ProtocolTests
         var profiles = DeviceModelProfiles.GetAllProfiles();
         Assert.NotEmpty(profiles);
 
-        // 验证 S1 支持全套功能
+        // 验证 S1 支持全套功能及两级降噪调节
         var s1 = DeviceModelProfiles.MatchProfileByName("SIBYL S1 ANC");
         Assert.Equal("S1", s1.ModelId);
         Assert.True(s1.SupportsAnc);
+        Assert.True(s1.SupportsAncDepth);
         Assert.True(s1.SupportsTimedShutdown);
         Assert.True(s1.SupportsSleepMode);
 
-        // 验证 B6 独有 RGB 炫彩灯效
+        // 验证 B6 独有 RGB 炫彩灯效及两级降噪
         var b6 = DeviceModelProfiles.MatchProfileByName("SIBYL B6 Cyber");
         Assert.Equal("B6", b6.ModelId);
         Assert.True(b6.SupportsLightEffect);
+        Assert.True(b6.SupportsAncDepth);
 
         // 验证 S10 半入耳无主动降噪
         var s10 = DeviceModelProfiles.MatchProfileByName("SIBYL S10");
         Assert.Equal("S10", s10.ModelId);
         Assert.False(s10.SupportsAnc);
+        Assert.False(s10.SupportsAncDepth);
 
         // 验证 B8 支持体感控制
         var b8 = DeviceModelProfiles.MatchProfileByName("SIBYL B8 Motion");

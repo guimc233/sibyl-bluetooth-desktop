@@ -1,7 +1,7 @@
 namespace SibylEarbuds.Core.Models;
 
 /// <summary>
-/// SIBYL 全系列耳机型号能力映射库 (从 APK raw 资源文件逆向提炼)
+/// SIBYL 全系列耳机型号能力映射库 (从 APK raw 资源文件逆向提炼，默认开启两级降噪调节)
 /// </summary>
 public static class DeviceModelProfiles
 {
@@ -9,7 +9,7 @@ public static class DeviceModelProfiles
 
     static DeviceModelProfiles()
     {
-        // 1. S1 (旗舰机型 - controlpan_s1.json)
+        // 1. S1 (旗舰真无线)
         Register(new DeviceCapability
         {
             ModelId = "S1",
@@ -19,7 +19,7 @@ public static class DeviceModelProfiles
             VendorHex = "3E21",
             FlageHex = "12CC",
             SupportsAnc = true,
-            SupportsAncDepth = true,
+            SupportsAncDepth = true, // 支持两级降噪调节 (舒适/深度)
             SupportsEq = true,
             SupportsGameMode = true,
             SupportsKeyCustomization = true,
@@ -31,7 +31,7 @@ public static class DeviceModelProfiles
             SupportsWhiteNoise = true
         });
 
-        // 2. B6 (电竞炫彩灯效机型 - dev_b6.json)
+        // 2. B6 (电竞炫彩灯效机型)
         Register(new DeviceCapability
         {
             ModelId = "B6",
@@ -41,10 +41,10 @@ public static class DeviceModelProfiles
             VendorHex = "3E21",
             FlageHex = "12CC",
             SupportsAnc = true,
-            SupportsAncDepth = false,
+            SupportsAncDepth = true,
             SupportsEq = true,
             SupportsGameMode = true,
-            SupportsLightEffect = true, // 独有 RGB 炫彩呼吸/常亮/调速
+            SupportsLightEffect = true,
             SupportsKeyCustomization = true,
             SupportsTouchLock = true,
             SupportsFindEarphone = true,
@@ -52,7 +52,7 @@ public static class DeviceModelProfiles
             SupportsWhiteNoise = true
         });
 
-        // 3. B1 (标准主力机型 - dev_b1.json)
+        // 3. B1 (标准主力机型)
         Register(new DeviceCapability
         {
             ModelId = "B1",
@@ -62,7 +62,7 @@ public static class DeviceModelProfiles
             VendorHex = "3E21",
             FlageHex = "12CC",
             SupportsAnc = true,
-            SupportsAncDepth = false,
+            SupportsAncDepth = true,
             SupportsEq = true,
             SupportsGameMode = true,
             SupportsKeyCustomization = true,
@@ -70,7 +70,7 @@ public static class DeviceModelProfiles
             SupportsWhiteNoise = true
         });
 
-        // 4. S10 (半入耳音乐系列 - controlpan_s10.json)
+        // 4. S10 (半入耳音乐系列)
         Register(new DeviceCapability
         {
             ModelId = "S10",
@@ -79,7 +79,8 @@ public static class DeviceModelProfiles
             ChipPlatform = BluetoothChipPlatform.JieLi,
             VendorHex = "3E22",
             FlageHex = "12CC",
-            SupportsAnc = false, // 半入耳无主动降噪
+            SupportsAnc = false, // 半入耳物理无主动降噪
+            SupportsAncDepth = false,
             SupportsEq = true,
             SupportsGameMode = true,
             SupportsKeyCustomization = true,
@@ -88,7 +89,7 @@ public static class DeviceModelProfiles
             SupportsWhiteNoise = true
         });
 
-        // 5. S11 & S11_LDAC (Hi-Res高清系列 - controlpan_s11.json & dev_s11_ldac.json)
+        // 5. S11 & S11_LDAC (Hi-Res高清系列)
         Register(new DeviceCapability
         {
             ModelId = "S11",
@@ -104,11 +105,11 @@ public static class DeviceModelProfiles
             SupportsKeyCustomization = true,
             SupportsFindEarphone = true,
             SupportsToneVolume = true,
-            SupportsLdacHiRes = true, // 支持 Hi-Res LDAC
+            SupportsLdacHiRes = true,
             SupportsWhiteNoise = true
         });
 
-        // 6. B8 (体感控制系列 - dev_b8.json)
+        // 6. B8 (体感控制系列)
         Register(new DeviceCapability
         {
             ModelId = "B8",
@@ -118,15 +119,16 @@ public static class DeviceModelProfiles
             VendorHex = "3E21",
             FlageHex = "12CC",
             SupportsAnc = false,
+            SupportsAncDepth = false,
             SupportsEq = true,
             SupportsGameMode = true,
-            SupportsSomatosensory = true, // 独有体感控制
+            SupportsSomatosensory = true,
             SupportsKeyCustomization = true,
             SupportsFindEarphone = true,
             SupportsWhiteNoise = true
         });
 
-        // 7. B14 ( dev_b14.json)
+        // 7. B14 (长续航音乐版)
         Register(new DeviceCapability
         {
             ModelId = "B14",
@@ -134,6 +136,7 @@ public static class DeviceModelProfiles
             ChipDescription = "杰理/炬力平台",
             ChipPlatform = BluetoothChipPlatform.JieLi,
             SupportsAnc = false,
+            SupportsAncDepth = false,
             SupportsEq = true,
             SupportsGameMode = true,
             SupportsTouchLock = true,
@@ -143,7 +146,7 @@ public static class DeviceModelProfiles
             SupportsWhiteNoise = true
         });
 
-        // 8. Y1 (炬力平台 - controlpan_y1.json)
+        // 8. Y1 (炬力平台)
         Register(new DeviceCapability
         {
             ModelId = "Y1",
@@ -153,6 +156,7 @@ public static class DeviceModelProfiles
             VendorHex = "3D11",
             FlageHex = "12CC",
             SupportsAnc = true,
+            SupportsAncDepth = true,
             SupportsEq = true,
             SupportsGameMode = true,
             SupportsKeyCustomization = true,
@@ -160,7 +164,7 @@ public static class DeviceModelProfiles
             SupportsWhiteNoise = true
         });
 
-        // 9. Y7 / Y7_MAX (controlpan_y7.json & controlpan_y7_max.json)
+        // 9. Y7 / Y7_MAX
         Register(new DeviceCapability
         {
             ModelId = "Y7",
@@ -169,6 +173,7 @@ public static class DeviceModelProfiles
             ChipPlatform = BluetoothChipPlatform.Actions,
             VendorHex = "3D11",
             SupportsAnc = true,
+            SupportsAncDepth = true,
             SupportsEq = true,
             SupportsGameMode = true,
             SupportsKeyCustomization = true,
@@ -177,7 +182,7 @@ public static class DeviceModelProfiles
             SupportsWhiteNoise = true
         });
 
-        // 10. CH500 (头戴降噪 - dev_ch500.json)
+        // 10. CH500 (头戴主动降噪)
         Register(new DeviceCapability
         {
             ModelId = "CH500",
@@ -192,7 +197,7 @@ public static class DeviceModelProfiles
             SupportsWhiteNoise = true
         });
 
-        // 11. WF200_LDAC / WS200_LDAC (运动高解析系列)
+        // 11. WF200 / WS200 LDAC
         Register(new DeviceCapability
         {
             ModelId = "WF200",
@@ -200,6 +205,7 @@ public static class DeviceModelProfiles
             ChipDescription = "Realtek 高清无损音频平台",
             ChipPlatform = BluetoothChipPlatform.Realtek,
             SupportsAnc = true,
+            SupportsAncDepth = true,
             SupportsEq = true,
             SupportsGameMode = true,
             SupportsLdacHiRes = true,
@@ -208,7 +214,7 @@ public static class DeviceModelProfiles
             SupportsWhiteNoise = true
         });
 
-        // 12. PRO (通用全功能兼容方案 - controlpan_pro.json)
+        // 12. PRO (通用全功能兼容方案)
         Register(new DeviceCapability
         {
             ModelId = "PRO",

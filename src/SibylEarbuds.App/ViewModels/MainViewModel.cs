@@ -86,6 +86,7 @@ public class MainViewModel : ViewModelBase, IDisposable
     public ICommand ToggleAdvancedSettingsCommand { get; }
 
     public ICommand SetAncCommand { get; }
+    public ICommand SetAncDepthCommand { get; }
     public ICommand ToggleGameModeCommand { get; }
     public ICommand ToggleTouchLockCommand { get; }
     public ICommand ToggleFindEarphoneCommand { get; }
@@ -121,6 +122,13 @@ public class MainViewModel : ViewModelBase, IDisposable
             if (param is string str && int.TryParse(str, out int modeInt))
             {
                 await SetAncAsync((AncModeType)modeInt);
+            }
+        });
+        SetAncDepthCommand = new AsyncRelayCommand(async param =>
+        {
+            if (param is string str && byte.TryParse(str, out byte depthByte))
+            {
+                await SetAncDepthAsync((AncDepthLevel)depthByte);
             }
         });
         ToggleGameModeCommand = new AsyncRelayCommand(ToggleGameModeAsync);
@@ -475,6 +483,17 @@ public class MainViewModel : ViewModelBase, IDisposable
         {
             AddLog($"[BLE-SUCCESS] 连接成功: {dev.Name}，自动切入控制详情页");
             CurrentPage = AppNavigationPage.DeviceDashboard;
+
+            // 记住本次成功连接的设备，保存至配置文件
+            try
+            {
+                var settings = SettingsStorageService.Load();
+                settings.LastConnectedDeviceId = dev.Id;
+                settings.LastConnectedDeviceName = dev.Name;
+                SettingsStorageService.Save(settings);
+                AddLog($"[CONFIG] 已记住设备: {dev.Name}，下次打开将自动尝试重连");
+            }
+            catch { }
         }
     }
 
@@ -489,6 +508,16 @@ public class MainViewModel : ViewModelBase, IDisposable
     {
         CurrentAncMode = mode;
         await _deviceService.SetAncModeAsync(mode, CurrentAncDepth);
+    }
+
+    public async Task SetAncDepthAsync(AncDepthLevel depth)
+    {
+        CurrentAncDepth = depth;
+        if (CurrentAncMode == AncModeType.NoiseReduction)
+        {
+            await _deviceService.SetAncModeAsync(AncModeType.NoiseReduction, depth);
+            AddLog($"[ANC-DEPTH] 降噪等级已切换至: {(depth == AncDepthLevel.Comfortable ? "舒适降噪 (50%)" : "深度降噪 (100%)")}");
+        }
     }
 
     public async Task ToggleGameModeAsync()
@@ -524,6 +553,8 @@ public class MainViewModel : ViewModelBase, IDisposable
         _ = StartScanAsync();
     }
 
+    private bool _hasAttemptedAutoConnect = false;
+
     private void AttachServiceEvents()
     {
         _deviceService.StatusUpdated += status =>
@@ -556,6 +587,22 @@ public class MainViewModel : ViewModelBase, IDisposable
                     _deviceMap[dev.Id] = dev;
                     DiscoveredDevices.Add(dev);
                     if (SelectedDevice == null) SelectedDevice = dev;
+
+                    // 自动重连上次记住的设备
+                    if (!_hasAttemptedAutoConnect && !IsConnected)
+                    {
+                        var settings = SettingsStorageService.Load();
+                        if (settings.AutoReconnect && !string.IsNullOrEmpty(settings.LastConnectedDeviceId))
+                        {
+                            if (string.Equals(dev.Id, settings.LastConnectedDeviceId, StringComparison.OrdinalIgnoreCase) ||
+                                string.Equals(dev.Name, settings.LastConnectedDeviceName, StringComparison.OrdinalIgnoreCase))
+                            {
+                                _hasAttemptedAutoConnect = true;
+                                AddLog($"[AUTO-CONNECT] 检测到上次连接过的设备: {dev.Name}，正在自动尝试重连...");
+                                _ = ConnectAsync(dev);
+                            }
+                        }
+                    }
                 }
                 else
                 {

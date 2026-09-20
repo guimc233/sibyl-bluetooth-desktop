@@ -280,7 +280,22 @@
                                     <Button Grid.Column="2" Content="🔊 通透" Command="{Binding SetAncCommand}" CommandParameter="3" 
                                             Style="{StaticResource FluentStandardButton}" Margin="3,0,0,0"/>
                                 </Grid>
-                                <TextBlock Text="降噪深度: 深度消噪 (100%) | 纯 BLE 写入零音频断续" FontSize="11" Foreground="#8C8C8C"/>
+
+                                <!-- 两级降噪等级调节 (舒适降噪 / 深度降噪) -->
+                                <Border Background="#242424" CornerRadius="6" Padding="10,8" Margin="0,2,0,8"
+                                        Visibility="{Binding CurrentProfile.SupportsAncDepth, Converter={StaticResource BoolToVis}}">
+                                    <DockPanel>
+                                        <TextBlock Text="降噪等级:" FontSize="12" Foreground="#CCCCCC" VerticalAlignment="Center"/>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                            <Button Content="舒适降噪" Command="{Binding SetAncDepthCommand}" CommandParameter="50" 
+                                                    Style="{StaticResource FluentStandardButton}" Padding="10,4" Margin="0,0,6,0"/>
+                                            <Button Content="深度降噪" Command="{Binding SetAncDepthCommand}" CommandParameter="100" 
+                                                    Style="{StaticResource FluentAccentButton}" Padding="10,4"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+
+                                <TextBlock Text="当前状态: 纯 BLE 隔离传输，不占 A2DP 音乐信道" FontSize="11" Foreground="#8C8C8C"/>
                             </StackPanel>
                         </Border>
 
