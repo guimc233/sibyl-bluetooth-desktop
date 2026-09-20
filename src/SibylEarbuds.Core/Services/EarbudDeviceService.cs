@@ -68,17 +68,28 @@ public class EarbudDeviceService : IDisposable
     }
 
     /// <summary>
-    /// 实时调整 10 段均衡器增益（带 80ms 防抖限流，防频次过高）
+    /// 手动上传并应用 10 段均衡器增益（需用户在界面点击确认按钮下发）
+    /// </summary>
+    public async Task<bool> ApplyEqGainsAsync(int[] gains, int presetType = 255)
+    {
+        CurrentStatus.CurrentEq.Gains = (int[])gains.Clone();
+        CurrentStatus.CurrentEq.PresetId = presetType;
+        CurrentStatus.CurrentEq.Name = presetType == 255 ? "自定义" : "预设音效";
+        StatusUpdated?.Invoke(CurrentStatus);
+
+        var packet = PacketBuilder.BuildEqPacket(gains, presetType);
+        return await Dispatcher.SendCriticalCommandAsync(SibylCommandId.Equalizer, packet);
+    }
+
+    /// <summary>
+    /// 实时调整 10 段均衡器增益
     /// </summary>
     public void SetEqGains(int[] gains)
     {
         CurrentStatus.CurrentEq.Gains = (int[])gains.Clone();
-        CurrentStatus.CurrentEq.PresetId = 0;
+        CurrentStatus.CurrentEq.PresetId = 255;
         CurrentStatus.CurrentEq.Name = "自定义";
         StatusUpdated?.Invoke(CurrentStatus);
-
-        var packet = PacketBuilder.BuildEqPacket(gains);
-        Dispatcher.EnqueueDebouncedCommand(SibylCommandId.Equalizer, packet);
     }
 
     /// <summary>
@@ -89,7 +100,7 @@ public class EarbudDeviceService : IDisposable
         CurrentStatus.CurrentEq = new EqConfiguration(preset.Name, preset.PresetId, preset.Gains);
         StatusUpdated?.Invoke(CurrentStatus);
 
-        var packet = PacketBuilder.BuildEqPacket(preset.Gains);
+        var packet = PacketBuilder.BuildEqPacket(preset.Gains, preset.PresetId);
         return await Dispatcher.SendCriticalCommandAsync(SibylCommandId.Equalizer, packet);
     }
 
@@ -103,6 +114,18 @@ public class EarbudDeviceService : IDisposable
 
         var packet = PacketBuilder.BuildGameModePacket(enabled);
         return await Dispatcher.SendCriticalCommandAsync(SibylCommandId.GameMode, packet);
+    }
+
+    /// <summary>
+    /// 开启/关闭 Hi-Res Wireless / LDAC 高清音频解码模式 (cmdid 77)
+    /// </summary>
+    public async Task<bool> SetHighResModeAsync(bool enabled)
+    {
+        CurrentStatus.IsLdacEnabled = enabled;
+        StatusUpdated?.Invoke(CurrentStatus);
+
+        var packet = PacketBuilder.BuildPacket(SibylCommandId.LdacHighRes, [(byte)(enabled ? 1 : 0)]);
+        return await Dispatcher.SendCriticalCommandAsync(SibylCommandId.LdacHighRes, packet);
     }
 
     /// <summary>

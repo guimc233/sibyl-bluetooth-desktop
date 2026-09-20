@@ -24,7 +24,7 @@ public enum SibylCommandId : byte
     PairName = 39,               // 修改蓝牙设备名称 (CMDID_ChangePairName)
     ToneVolumeControl = 41,      // 提示音音量调节 (CMDID_PROMPT)
     HifiMode = 42,               // HiFi 模式 (CMDID_HifiMode)
-    Somatosensory1 = 77,         // 点头体感控制 (CMDID_SomatonControl1)
+    LdacHighRes = 77,            // Hi-Res Wireless / LDAC 高清音频解码 (CMDID_SomatonControl1 / ldacItem)
     Somatosensory2 = 79,         // 摇头体感控制 (CMDID_SomatonControl2)
     Somatosensory3 = 81,         // 转头体感控制 (CMDID_SomatonControl3)
     QueryInfo = 0xFA             // 查询设备属性信息 (CMDID_GETINFO = -6 = 0xFA)

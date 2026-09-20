@@ -142,6 +142,14 @@ public static class PacketParser
                 }
                 break;
 
+            case SibylCommandId.LdacHighRes: // 77 (0x4D)
+                if (packet.Payload.Length >= 1)
+                {
+                    status.IsLdacEnabled = packet.Payload[0] == 1;
+                    return true;
+                }
+                break;
+
             case SibylCommandId.CloseTouch: // 7 (0x07)
                 if (packet.Payload.Length >= 1)
                 {

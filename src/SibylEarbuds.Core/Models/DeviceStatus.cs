@@ -9,7 +9,7 @@ public class DeviceStatus
     // 电量 (0-100%, -1 表示未就绪或未入盒)
     public int LeftBattery { get; set; } = 85;
     public int RightBattery { get; set; } = 90;
-    public int CaseBattery { get; set; } = 100;
+    public int CaseBattery { get; set; } = -1;
 
     public bool IsLeftCharging { get; set; } = false;
     public bool IsRightCharging { get; set; } = false;
@@ -19,6 +19,7 @@ public class DeviceStatus
     public AncState Anc { get; set; } = new(AncModeType.NoiseReduction, AncDepthLevel.Deep);
     public EqConfiguration CurrentEq { get; set; } = new("经典 (默认)", 1, new int[10]);
     public bool IsGameModeEnabled { get; set; } = false;
+    public bool IsLdacEnabled { get; set; } = false;
     public bool IsTouchDisabled { get; set; } = false;
     public bool IsSleepModeEnabled { get; set; } = false;
     public int TimedShutdownMinutes { get; set; } = 0; // 0 表示不自动关机

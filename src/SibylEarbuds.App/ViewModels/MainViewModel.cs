@@ -12,7 +12,6 @@ namespace SibylEarbuds.App.ViewModels;
 public class MainViewModel : ViewModelBase, IDisposable
 {
     private EarbudDeviceService _deviceService;
-    private bool _isMockMode = true; // 默认开启以保障开箱即用，可在UI一键切真实BLE
     private bool _isScanning;
     private DiscoveredBleDevice? _selectedDevice;
     private string? _lastMatchedDeviceName;
@@ -22,7 +21,7 @@ public class MainViewModel : ViewModelBase, IDisposable
     private bool _isConnected;
     private int _leftBattery = 85;
     private int _rightBattery = 90;
-    private int _caseBattery = 100;
+    private int _caseBattery = -1; // 默认 -1 (未拉取到则隐藏充电仓)
     private bool _isLeftCharging;
     private bool _isRightCharging;
     private bool _isCaseCharging;
@@ -32,8 +31,9 @@ public class MainViewModel : ViewModelBase, IDisposable
     private AncModeType _currentAncMode = AncModeType.NoiseReduction;
     private AncDepthLevel _currentAncDepth = AncDepthLevel.Deep;
 
-    // 游戏模式与触控
+    // 游戏模式、高音质与触控
     private bool _isGameMode;
+    private bool _isHighResMode;
     private bool _isTouchDisabled;
     private bool _isSleepMode;
     private bool _isFindingEarphone;
@@ -95,14 +95,16 @@ public class MainViewModel : ViewModelBase, IDisposable
     public ICommand DisconnectCommand { get; }
     public ICommand SetAncCommand { get; }
     public ICommand ToggleGameModeCommand { get; }
+    public ICommand ToggleHighResModeCommand { get; }
     public ICommand ToggleTouchLockCommand { get; }
     public ICommand ToggleFindEarphoneCommand { get; }
     public ICommand ResetDefaultsCommand { get; }
     public ICommand FactoryResetCommand { get; }
     public ICommand SaveKeySettingsCommand { get; }
     public ICommand ApplyEqPresetCommand { get; }
+    public ICommand UploadEqCommand { get; }
+    public ICommand ResetEqCommand { get; }
     public ICommand SetLightModeCommand { get; }
-    public ICommand SwitchTransportCommand { get; }
     public ICommand PlaySoundCommand { get; }
     public ICommand StopSoundCommand { get; }
     public ICommand SwitchNavCommand { get; }
@@ -117,7 +119,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 
     public MainViewModel()
     {
-        _deviceService = new EarbudDeviceService(TransportFactory.Create(_isMockMode));
+        _deviceService = new EarbudDeviceService(TransportFactory.Create(false));
         AttachServiceEvents();
 
         // 初始化 EQ 预设
@@ -137,6 +139,7 @@ public class MainViewModel : ViewModelBase, IDisposable
             }
         });
         ToggleGameModeCommand = new AsyncRelayCommand(ToggleGameModeAsync);
+        ToggleHighResModeCommand = new AsyncRelayCommand(ToggleHighResModeAsync);
         ToggleTouchLockCommand = new AsyncRelayCommand(ToggleTouchLockAsync);
         ToggleFindEarphoneCommand = new AsyncRelayCommand(ToggleFindEarphoneAsync);
         ResetDefaultsCommand = new AsyncRelayCommand(async () => await _deviceService.ResetSettingsAsync(false));
@@ -149,6 +152,8 @@ public class MainViewModel : ViewModelBase, IDisposable
                 SelectedEqPreset = preset;
             }
         });
+        UploadEqCommand = new AsyncRelayCommand(UploadEqAsync);
+        ResetEqCommand = new RelayCommand(ResetEq);
         SetLightModeCommand = new RelayCommand(param =>
         {
             if (param is string str && int.TryParse(str, out int lightModeInt))
@@ -157,7 +162,6 @@ public class MainViewModel : ViewModelBase, IDisposable
                 AddLog($"[LED] 切换灯效模式: {LightMode}");
             }
         });
-        SwitchTransportCommand = new RelayCommand(ToggleMockMode);
         SwitchNavCommand = new RelayCommand(param =>
         {
             if (param is string str && int.TryParse(str, out int idx))
@@ -200,18 +204,8 @@ public class MainViewModel : ViewModelBase, IDisposable
             });
         };
 
-        AddLog("[SYS] SIBYL 耳机控制中枢就绪 (Windows 10/11 优化版)");
-        AddLog("[AUDIO-GUARD] 物理级隔离已生效：绝不触碰 A2DP 音频流，指令通道走纯 BLE GATT");
-
-        // 如果是模拟模式，默认自动连接供即刻交互
-        if (_isMockMode)
-        {
-            _ = Task.Run(async () =>
-            {
-                await Task.Delay(300);
-                await ConnectAsync();
-            });
-        }
+        AddLog("[SYS] SIBYL 耳机 Windows 10/11 控制中枢就绪");
+        AddLog("[BLE] 基于 WinRT BLE 原生 GATT 服务通道，请点击“搜索”选择耳机进行连接");
     }
 
     #region Properties
@@ -261,8 +255,16 @@ public class MainViewModel : ViewModelBase, IDisposable
     public int CaseBattery
     {
         get => _caseBattery;
-        set => SetProperty(ref _caseBattery, value);
+        set
+        {
+            if (SetProperty(ref _caseBattery, value))
+            {
+                OnPropertyChanged(nameof(IsCaseBatteryVisible));
+            }
+        }
     }
+
+    public bool IsCaseBatteryVisible => _caseBattery > 0 && _caseBattery <= 100;
 
     public bool IsLeftCharging
     {
@@ -304,6 +306,12 @@ public class MainViewModel : ViewModelBase, IDisposable
     {
         get => _isGameMode;
         set => SetProperty(ref _isGameMode, value);
+    }
+
+    public bool IsHighResMode
+    {
+        get => _isHighResMode;
+        set => SetProperty(ref _isHighResMode, value);
     }
 
     public bool IsTouchDisabled
@@ -423,7 +431,7 @@ public class MainViewModel : ViewModelBase, IDisposable
             {
                 _eqGains = (int[])value.Gains.Clone();
                 NotifyAllEqBands();
-                _ = _deviceService.ApplyEqPresetAsync(value);
+                AddLog($"[EQ] 载入预设: {value.Name}，请点击“应用并上传 EQ”下发至耳机");
             }
         }
     }
@@ -456,7 +464,6 @@ public class MainViewModel : ViewModelBase, IDisposable
         {
             _eqGains[index] = gain;
             OnPropertyChanged($"EqBand{index}");
-            // 防抖限流发送到耳机
             _deviceService.SetEqGains(_eqGains);
         }
     }
@@ -508,13 +515,13 @@ public class MainViewModel : ViewModelBase, IDisposable
 
     public async Task ConnectAsync()
     {
-        if (SelectedDevice == null && !IsMockMode)
+        if (SelectedDevice == null)
         {
             AddLog("[BLE-WARN] 请先点击“搜索设备”，并在下拉框中选择要连接的耳机");
             return;
         }
 
-        string targetId = SelectedDevice?.Id ?? "MOCK-DEV-01";
+        string targetId = SelectedDevice.Id;
         AddLog($"[BLE-CONNECT] 准备连接设备: {targetId}...");
         bool success = await _deviceService.ConnectAsync(targetId);
         if (success)
@@ -538,8 +545,37 @@ public class MainViewModel : ViewModelBase, IDisposable
     public async Task ToggleGameModeAsync()
     {
         // CheckBox 的双向绑定会先更新 IsGameMode，此处直接以最新状态为准，避免二次取反导致状态被弹回
-        AddLog($"[GAME] 切换游戏模式: {(IsGameMode ? "开启 (38ms)" : "关闭")}");
+        AddLog($"[GAME] 切换游戏模式: {(IsGameMode ? "开启 (38ms 低延迟)" : "关闭 (高音质立体声)")}");
         await _deviceService.SetGameModeAsync(IsGameMode);
+    }
+
+    public async Task ToggleHighResModeAsync()
+    {
+        AddLog($"[AUDIO] 切换 Hi-Res / LDAC 高音质解码: {(IsHighResMode ? "开启 (990kbps 高清音质)" : "关闭")}");
+        await _deviceService.SetHighResModeAsync(IsHighResMode);
+    }
+
+    public async Task UploadEqAsync()
+    {
+        int presetId = SelectedEqPreset?.PresetId ?? 255;
+        string gainsStr = string.Join(", ", _eqGains.Select((g, i) => $"{EqConfiguration.Frequencies[i]}Hz:{g}dB"));
+        AddLog($"[EQ] 正在上传 10 段均衡器配置至耳机硬件 (Preset Type={presetId}): [{gainsStr}]");
+        bool success = await _deviceService.ApplyEqGainsAsync(_eqGains, presetId);
+        if (success)
+        {
+            AddLog("[EQ-OK] 均衡器硬件 DSP 参数已成功写入耳机！");
+        }
+        else
+        {
+            AddLog("[EQ-WARN] 均衡器写入未成功，请检查蓝牙特征连接");
+        }
+    }
+
+    public void ResetEq()
+    {
+        for (int i = 0; i < 10; i++) _eqGains[i] = 0;
+        NotifyAllEqBands();
+        AddLog("[EQ] 均衡器增益已重置为 0dB (Flat)，请点击“应用并上传 EQ”下发至耳机");
     }
 
     public async Task ToggleTouchLockAsync()
@@ -566,23 +602,6 @@ public class MainViewModel : ViewModelBase, IDisposable
         await _deviceService.FindEarphonesAsync(nextState);
     }
 
-    private void ToggleMockMode()
-    {
-        _deviceService.Dispose();
-        IsMockMode = !IsMockMode;
-        _deviceService = new EarbudDeviceService(TransportFactory.Create(IsMockMode));
-        AttachServiceEvents();
-        DiscoveredDevices.Clear();
-        SelectedDevice = null;
-        _lastMatchedDeviceName = null;
-        AddLog($"[MODE] 已切换到: {(IsMockMode ? "虚拟耳机演示模式" : "Windows 10/11 真实 WinRT BLE 模式")}");
-
-        if (IsMockMode)
-        {
-            _ = ConnectAsync();
-        }
-    }
-
     private void AttachServiceEvents()
     {
         _deviceService.StatusUpdated += status =>
@@ -606,6 +625,7 @@ public class MainViewModel : ViewModelBase, IDisposable
                 CurrentAncMode = status.Anc.Mode;
                 CurrentAncDepth = status.Anc.Depth;
                 IsGameMode = status.IsGameModeEnabled;
+                IsHighResMode = status.IsLdacEnabled;
                 IsTouchDisabled = status.IsTouchDisabled;
                 FirmwareVersion = status.FirmwareVersion;
             });
