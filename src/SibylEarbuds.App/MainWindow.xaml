@@ -374,7 +374,7 @@
                 </Grid.RowDefinitions>
                 <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,6">
                     <TextBlock Text="📡 通信监控与调度日志" FontSize="11" FontWeight="Bold" Foreground="#38BDF8"/>
-                    <TextBlock Text="(所有数据帧均在独立后台线程调度，发包耗时 < 5ms，杜绝 A2DP 丢帧)" FontSize="11" Foreground="#64748B" Margin="10,0,0,0"/>
+                    <TextBlock Text="(所有数据帧均在独立后台线程调度，发包耗时 &lt; 5ms，杜绝 A2DP 丢帧)" FontSize="11" Foreground="#64748B" Margin="10,0,0,0"/>
                 </StackPanel>
                 <ListBox Grid.Row="1" ItemsSource="{Binding LogLines}" Background="Transparent" BorderThickness="0"
                          Foreground="#94A3B8" FontFamily="Consolas, Cascadia Code, Courier New" FontSize="11"/>
