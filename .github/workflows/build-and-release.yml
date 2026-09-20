@@ -1,0 +1,97 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [ main ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: '是否发布到 GitHub Releases'
+        required: false
+        type: boolean
+        default: true
+      tag_name:
+        description: 'Release 标签版本号 (如 v1.0.0)'
+        required: false
+        type: string
+        default: 'v1.0.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build & Test & Package
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET 8.0 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore SibylEarbuds.sln
+
+      - name: Run Unit Tests
+        run: dotnet test tests/SibylEarbuds.Core.Tests/SibylEarbuds.Core.Tests.csproj -c Release --no-restore --verbosity normal
+
+      - name: Publish Windows x64 Single-File Executable
+        run: |
+          dotnet publish src/SibylEarbuds.App/SibylEarbuds.App.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained false `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -o ./publish_win64
+
+      - name: Create Release Archive (ZIP)
+        shell: pwsh
+        run: |
+          Compress-Archive -Path ./publish_win64/* -DestinationPath ./SibylEarbudsManager-win-x64.zip
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SibylEarbudsManager-Windows-x64
+          path: |
+            ./publish_win64/SibylEarbudsManager.exe
+            ./SibylEarbudsManager-win-x64.zip
+
+      - name: Determine Tag Name
+        id: vars
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF -like "refs/tags/*") {
+            $tag = $env:GITHUB_REF -replace "refs/tags/", ""
+          } elseif ('${{ github.event.inputs.tag_name }}' -ne '') {
+            $tag = '${{ github.event.inputs.tag_name }}'
+          } else {
+            $tag = "v1.0." + $env:GITHUB_RUN_NUMBER
+          }
+          Write-Output "tag_name=$tag" >> $env:GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.create_release == true
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.vars.outputs.tag_name }}
+          name: SIBYL Earbuds Manager ${{ steps.vars.outputs.tag_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            ./publish_win64/SibylEarbudsManager.exe
+            ./SibylEarbudsManager-win-x64.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
