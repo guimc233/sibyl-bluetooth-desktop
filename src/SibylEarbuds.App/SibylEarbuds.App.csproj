@@ -35,7 +35,7 @@
     <_AppxTaskBase Condition="'$(_AppxTaskBase)' == '' And Exists('C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage')">C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage</_AppxTaskBase>
     <_AppxTaskBase Condition="'$(_AppxTaskBase)' == '' And Exists('C:\Program Files\Microsoft Visual Studio\2022\BuildTools\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage')">C:\Program Files\Microsoft Visual Studio\2022\BuildTools\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage</_AppxTaskBase>
     <_AppxTaskBase Condition="'$(_AppxTaskBase)' == '' And Exists('C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage')">C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage</_AppxTaskBase>
-    <AppxMSBuildToolsPath Condition="'$(AppxMSBuildToolsPath)' == '' And '$(_AppxTaskBase)' != ''">$(_AppxTaskBase)</AppxMSBuildToolsPath>
+    <AppxMSBuildToolsPath Condition="'$(AppxMSBuildToolsPath)' == '' And '$(_AppxTaskBase)' != ''">$(_AppxTaskBase)\</AppxMSBuildToolsPath>
   </PropertyGroup>
 
   <ItemGroup>
