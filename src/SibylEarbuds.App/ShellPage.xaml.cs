@@ -53,7 +53,7 @@ public sealed partial class ShellPage : Page
 
         if (ContentFrame.CanGoBack)
         {
-            ContentFrame.GoBack();
+            ContentFrame.GoBack(new SlideNavigationTransitionInfo());
         }
         else
         {

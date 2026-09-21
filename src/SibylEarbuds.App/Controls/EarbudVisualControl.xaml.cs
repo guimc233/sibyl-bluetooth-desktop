@@ -138,7 +138,19 @@ public sealed partial class EarbudVisualControl : UserControl
 
     private static Brush GetBrush(string key)
     {
-        var resources = Application.Current.Resources;
-        return resources.HasKey(key) && resources[key] is Brush brush ? brush : new SolidColorBrush();
+        // WinUI 3 ResourceDictionary 走索引器；缺失键会抛异常，因此用 try/catch 兜底。
+        try
+        {
+            if (Application.Current.Resources[key] is Brush brush)
+            {
+                return brush;
+            }
+        }
+        catch
+        {
+            // resource not found
+        }
+
+        return new SolidColorBrush();
     }
 }
