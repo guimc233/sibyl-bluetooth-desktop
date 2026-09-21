@@ -43,22 +43,22 @@ public partial class App : Application
         WriteCrashLog("Application.UnhandledException", e.Exception);
     }
 
-    private static void WriteCrashLog(string source, Exception? ex)
-    {
-        string message = $"[致命错误] {source}: {ex?.Message}{Environment.NewLine}{ex?.StackTrace}";
-        Debug.WriteLine(message);
+private static void WriteCrashLog(string source, Exception? ex)
+{
+    string message = $"[致命错误] {source}: {ex}{Environment.NewLine}{ex?.StackTrace}";
+    Debug.WriteLine(message);
 
-        try
-        {
-            string path = Path.Combine(AppContext.BaseDirectory, "crash.log");
-            File.AppendAllText(
-                path,
-                $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}{Environment.NewLine}{Environment.NewLine}",
-                Encoding.UTF8);
-        }
-        catch
-        {
-            // Logging must never take the app down.
-        }
+    try
+    {
+        string path = Path.Combine(AppContext.BaseDirectory, "crash.log");
+        File.AppendAllText(
+            path,
+            $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}{Environment.NewLine}{Environment.NewLine}",
+            Encoding.UTF8);
     }
+    catch
+    {
+        // Logging must never take the app down.
+    }
+}
 }

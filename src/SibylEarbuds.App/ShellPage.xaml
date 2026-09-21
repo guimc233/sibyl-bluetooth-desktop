@@ -30,7 +30,7 @@
                     Height="28"
                     CornerRadius="6"
                     Background="{ThemeResource ControlFillColorDefaultBrush}">
-                    <Image Source="ms-appx:///Resources/Images/app_logo.png" Stretch="Uniform" Margin="3" />
+                    <FontIcon Glyph="&#xE7F6;" FontSize="14" />
                 </Border>
                 <StackPanel VerticalAlignment="Center">
                     <TextBlock Text="SIBYL MUSIC" Style="{StaticResource CaptionTextBlockStyle}" FontWeight="SemiBold" />
@@ -137,8 +137,8 @@
                                 FontSize="11"
                                 AutomationProperties.Name="通信日志">
                                 <ListView.ItemTemplate>
-                                    <DataTemplate x:DataType="x:String">
-                                        <TextBlock Text="{x:Bind}" TextWrapping="Wrap" />
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" TextWrapping="Wrap" />
                                     </DataTemplate>
                                 </ListView.ItemTemplate>
                             </ListView>
