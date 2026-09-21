@@ -92,4 +92,44 @@ public class SibylDeviceMatcherTests
         Assert.Equal("S1", SibylDeviceMatcher.ResolveModelName(15377));
         Assert.Equal("PRO", SibylDeviceMatcher.ResolveModelName(9999));
     }
+
+    [Fact]
+    public void TryMatchSibylDevice_MatchesSibylNames_AndRejectsNonSibyl()
+    {
+        // 必须匹配各种 SIBYL 品牌设备并自动提取型号
+        Assert.True(SibylDeviceMatcher.TryMatchSibylDevice("SIBYL S1 ANC", null, null, out _, out string m1));
+        Assert.Equal("S1", m1);
+
+        Assert.True(SibylDeviceMatcher.TryMatchSibylDevice("SIBYL B6 Cyber", null, null, out _, out string m2));
+        Assert.Equal("B6", m2);
+
+        Assert.True(SibylDeviceMatcher.TryMatchSibylDevice("SIBYL S10", null, null, out _, out string m3));
+        Assert.Equal("S10", m3);
+
+        Assert.True(SibylDeviceMatcher.TryMatchSibylDevice("SIBYL S11 LDAC", null, null, out _, out string m4));
+        Assert.Equal("S11", m4);
+
+        Assert.True(SibylDeviceMatcher.TryMatchSibylDevice("SIBYL Y1 Game", null, null, out _, out string m5));
+        Assert.Equal("Y1", m5);
+
+        Assert.True(SibylDeviceMatcher.TryMatchSibylDevice("SIBYL Earbuds", null, null, out _, out string m6));
+        Assert.Equal("PRO", m6);
+
+        // 必须彻底拒绝非 SIBYL 设备（如苹果、索尼、华为、小米等）
+        Assert.False(SibylDeviceMatcher.TryMatchSibylDevice("Apple AirPods Pro", null, null, out _, out _));
+        Assert.False(SibylDeviceMatcher.TryMatchSibylDevice("Sony WH-1000XM5", null, null, out _, out _));
+        Assert.False(SibylDeviceMatcher.TryMatchSibylDevice("HUAWEI FreeBuds 4", null, null, out _, out _));
+        Assert.False(SibylDeviceMatcher.TryMatchSibylDevice("Xiaomi Buds 4", null, null, out _, out _));
+        Assert.False(SibylDeviceMatcher.TryMatchSibylDevice("DESKTOP-ABCDEF", null, null, out _, out _));
+        Assert.False(SibylDeviceMatcher.TryMatchSibylDevice(null, null, null, out _, out _));
+        Assert.False(SibylDeviceMatcher.TryMatchSibylDevice("", null, null, out _, out _));
+    }
+
+    [Fact]
+    public void TryMatchSibylDevice_MatchesServiceUuid()
+    {
+        var uuids = new List<Guid> { SibylUuids.SibylServiceUuid };
+        Assert.True(SibylDeviceMatcher.TryMatchSibylDevice("My Headphone", null, uuids, out _, out string model));
+        Assert.Equal("PRO", model);
+    }
 }

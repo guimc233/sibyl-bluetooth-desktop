@@ -2,6 +2,7 @@
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.Advertisement;
 using Windows.Devices.Bluetooth.GenericAttributeProfile;
+using Windows.Devices.Enumeration;
 using Windows.Storage.Streams;
 #endif
 using SibylEarbuds.Core.Protocol;
@@ -34,12 +35,11 @@ public class WinRtBleTransport : IBleTransport
         {
             if (_continuousWatcher != null)
             {
-                if (_continuousWatcher.Status == BluetoothLEAdvertisementWatcherStatus.Started)
-                    return Task.CompletedTask;
                 try { _continuousWatcher.Stop(); } catch { }
+                _continuousWatcher = null;
             }
 
-            OnLog?.Invoke("[WinRT-BLE] 启动 Windows 10/11 连续蓝牙广播监听...");
+            OnLog?.Invoke("[WinRT-BLE] 启动 Windows 10/11 蓝牙广播监听与已配对设备扫描...");
             _continuousWatcher = new BluetoothLEAdvertisementWatcher
             {
                 ScanningMode = BluetoothLEScanningMode.Active
@@ -48,8 +48,9 @@ public class WinRtBleTransport : IBleTransport
             _continuousWatcher.Received += (sender, args) =>
             {
                 string id = args.BluetoothAddress.ToString("X");
+                string devName = args.Advertisement.LocalName;
+                var serviceUuids = args.Advertisement.ServiceUuids;
 
-                // 官方 APK 精确过滤：CompanyID=0xC912 厂商广播 + 已知机型 VendorId，否则直接忽略
                 var manData = new Dictionary<ushort, byte[]>();
                 foreach (var md in args.Advertisement.ManufacturerData)
                 {
@@ -59,20 +60,22 @@ public class WinRtBleTransport : IBleTransport
                     manData[md.CompanyId] = bytes;
                 }
 
-                if (!SibylDeviceMatcher.TryParseSibylAdvertisement(manData, out var adv))
+                if (!SibylDeviceMatcher.TryMatchSibylDevice(devName, manData, serviceUuids, out var adv, out string model))
                 {
                     return;
                 }
 
-                string displayName = string.IsNullOrWhiteSpace(args.Advertisement.LocalName)
-                    ? $"SIBYL {adv.ModelName}"
-                    : args.Advertisement.LocalName;
+                string displayName = string.IsNullOrWhiteSpace(devName)
+                    ? $"SIBYL {model}"
+                    : devName;
+
+                OnLog?.Invoke($"[BLE-MATCH] 发现 SIBYL 耳机: {displayName} (MAC: {id}, 型号: {model}, RSSI: {args.RawSignalStrengthInDBm}dBm)");
 
                 var discovered = new DiscoveredBleDevice(id, displayName, args.RawSignalStrengthInDBm)
                 {
                     IsSibylVerified = true,
                     VendorId = adv.VendorId,
-                    ModelName = adv.ModelName,
+                    ModelName = model,
                     LeftBattery = adv.LeftBattery,
                     RightBattery = adv.RightBattery,
                     CaseBattery = adv.CaseBattery,
@@ -83,6 +86,36 @@ public class WinRtBleTransport : IBleTransport
             };
 
             _continuousWatcher.Start();
+
+            // 同步检索系统已配对的蓝牙设备（解决已连接/已配对耳机不发密集广播的问题）
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    string aqs = BluetoothLEDevice.GetDeviceSelector();
+                    var devices = await DeviceInformation.FindAllAsync(aqs);
+                    foreach (var di in devices)
+                    {
+                        if (string.IsNullOrWhiteSpace(di.Name)) continue;
+                        if (SibylDeviceMatcher.TryMatchSibylDevice(di.Name, null, null, out var adv, out string model))
+                        {
+                            OnLog?.Invoke($"[BLE-PAIRED] 发现已在系统配对的 SIBYL 耳机: {di.Name} (型号: {model})");
+                            var paired = new DiscoveredBleDevice(di.Id, di.Name, -50)
+                            {
+                                IsSibylVerified = true,
+                                ModelName = model,
+                                VendorId = adv.VendorId,
+                                LastSeen = DateTime.UtcNow
+                            };
+                            OnDeviceFound?.Invoke(paired);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    OnLog?.Invoke($"[WinRT-PAIRED-WARN] 检索已配对设备: {ex.Message}");
+                }
+            });
         }
         catch (Exception ex)
         {
@@ -124,6 +157,8 @@ public class WinRtBleTransport : IBleTransport
         watcher.Received += (sender, args) =>
         {
             string id = args.BluetoothAddress.ToString("X");
+            string devName = args.Advertisement.LocalName;
+            var serviceUuids = args.Advertisement.ServiceUuids;
 
             var manData = new Dictionary<ushort, byte[]>();
             foreach (var md in args.Advertisement.ManufacturerData)
@@ -134,20 +169,20 @@ public class WinRtBleTransport : IBleTransport
                 manData[md.CompanyId] = bytes;
             }
 
-            if (!SibylDeviceMatcher.TryParseSibylAdvertisement(manData, out var adv))
+            if (!SibylDeviceMatcher.TryMatchSibylDevice(devName, manData, serviceUuids, out var adv, out string model))
             {
                 return;
             }
 
-            string displayName = string.IsNullOrWhiteSpace(args.Advertisement.LocalName)
-                ? $"SIBYL {adv.ModelName}"
-                : args.Advertisement.LocalName;
+            string displayName = string.IsNullOrWhiteSpace(devName)
+                ? $"SIBYL {model}"
+                : devName;
 
             var item = new DiscoveredBleDevice(id, displayName, args.RawSignalStrengthInDBm)
             {
                 IsSibylVerified = true,
                 VendorId = adv.VendorId,
-                ModelName = adv.ModelName,
+                ModelName = model,
                 LeftBattery = adv.LeftBattery,
                 RightBattery = adv.RightBattery,
                 CaseBattery = adv.CaseBattery
@@ -172,8 +207,15 @@ public class WinRtBleTransport : IBleTransport
         try
         {
             OnLog?.Invoke($"[WinRT-BLE] 正在连接设备: {deviceId}...");
-            ulong address = Convert.ToUInt64(deviceId, 16);
-            _bluetoothLeDevice = await BluetoothLEDevice.FromBluetoothAddressAsync(address);
+            if (deviceId.Contains('#') || deviceId.Contains('\\') || deviceId.Contains('{'))
+            {
+                _bluetoothLeDevice = await BluetoothLEDevice.FromIdAsync(deviceId);
+            }
+            else
+            {
+                ulong address = Convert.ToUInt64(deviceId, 16);
+                _bluetoothLeDevice = await BluetoothLEDevice.FromBluetoothAddressAsync(address);
+            }
 
             if (_bluetoothLeDevice == null)
             {
