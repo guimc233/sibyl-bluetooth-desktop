@@ -10,9 +10,6 @@ public sealed partial class ShellPage : Page
 {
     public MainViewModel Vm { get; }
 
-    /// <summary>Exposed so the hosting Window can register it as the drag region.</summary>
-    public UIElement TitleBarElement => TitleBar;
-
     public ShellPage()
     {
         Vm = ((App)Application.Current).MainViewModel!;
@@ -60,7 +57,4 @@ public sealed partial class ShellPage : Page
             ContentFrame.Navigate(typeof(DeviceDiscoveryPage), null, new SlideNavigationTransitionInfo());
         }
     }
-
-    private void OnToggleAdvancedSettingsClick(object sender, RoutedEventArgs e)
-        => Vm.ToggleAdvancedSettingsCommand.Execute(null);
 }

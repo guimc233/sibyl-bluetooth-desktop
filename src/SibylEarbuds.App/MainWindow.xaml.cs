@@ -25,8 +25,8 @@ public sealed partial class MainWindow : Window
 
         Title = "SIBYL MUSIC - 电脑版耳机控制中枢";
         SystemBackdrop = new MicaBackdrop();
-        ExtendsContentIntoTitleBar = true;
-        SetTitleBar(rootShell.TitleBarElement);
+        // 使用系统原生自带顶栏，不自己画顶栏
+        ExtendsContentIntoTitleBar = false;
 
         ResizeToContent();
     }

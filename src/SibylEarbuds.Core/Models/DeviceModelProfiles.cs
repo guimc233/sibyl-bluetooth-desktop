@@ -246,7 +246,7 @@ public static class DeviceModelProfiles
             SupportsAncDepth = true,
             SupportsEq = true,
             SupportsGameMode = true,
-            SupportsLightEffect = true,
+            SupportsLightEffect = false, // 仅 B6 等特定电竞机型支持 RGB
             SupportsKeyCustomization = true,
             SupportsTouchLock = true,
             SupportsTimedShutdown = true,

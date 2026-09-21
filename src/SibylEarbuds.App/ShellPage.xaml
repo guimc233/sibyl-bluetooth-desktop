@@ -6,58 +6,10 @@
     Background="Transparent">
 
     <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-
-        <!-- Custom title bar (drag region + caption button reserve on the right) -->
-        <Grid
-            x:Name="TitleBar"
-            Grid.Row="0"
-            Height="48"
-            Margin="0,0,0,0"
-            ColumnSpacing="12">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-
-            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center" Margin="16,0,0,0">
-                <Border
-                    Width="28"
-                    Height="28"
-                    CornerRadius="6"
-                    Background="{ThemeResource ControlFillColorDefaultBrush}">
-                    <FontIcon Glyph="&#xE7F6;" FontSize="14" />
-                </Border>
-                <StackPanel VerticalAlignment="Center">
-                    <TextBlock Text="SIBYL MUSIC" Style="{StaticResource CaptionTextBlockStyle}" FontWeight="SemiBold" />
-                    <TextBlock
-                        Text="{x:Bind Vm.DeviceName, Mode=OneWay}"
-                        Style="{StaticResource CaptionTextBlockStyle}"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                </StackPanel>
-            </StackPanel>
-
-            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,148,0">
-                <Button
-                    Click="OnToggleAdvancedSettingsClick"
-                    ToolTipService.ToolTip="高级选项与协议面板"
-                    AutomationProperties.Name="高级选项">
-                    <FontIcon Glyph="&#xE713;" FontSize="14" />
-                </Button>
-            </StackPanel>
-        </Grid>
-
-        <Frame x:Name="ContentFrame" Grid.Row="1" />
+        <Frame x:Name="ContentFrame" />
 
         <!-- Hidden advanced drawer overlay -->
-        <Grid
-            Grid.Row="0"
-            Grid.RowSpan="2"
-            Visibility="{x:Bind conv:VisibilityHelper.Visible(Vm.IsAdvancedSettingsOpen), Mode=OneWay}">
+        <Grid Visibility="{x:Bind conv:VisibilityHelper.Visible(Vm.IsAdvancedSettingsOpen), Mode=OneWay}">
             <Border
                 Background="{ThemeResource SystemControlBackgroundAltHighBrush}"
                 Opacity="0.6" />
@@ -84,7 +36,7 @@
                             VerticalAlignment="Center" />
                         <Button
                             HorizontalAlignment="Right"
-                            Click="OnToggleAdvancedSettingsClick"
+                            Command="{x:Bind Vm.ToggleAdvancedSettingsCommand}"
                             ToolTipService.ToolTip="关闭"
                             AutomationProperties.Name="关闭高级选项">
                             <FontIcon Glyph="&#xE711;" FontSize="12" />

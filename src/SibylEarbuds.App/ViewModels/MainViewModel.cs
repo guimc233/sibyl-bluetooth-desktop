@@ -673,18 +673,23 @@ public class MainViewModel : ViewModelBase, IDisposable
 
         AddLog($"[BLE-SUCCESS] 连接成功: {dev.Name}");
 
-        // 根据官方广播 VendorId 自动选择机型适配 (不再支持手动覆盖)
-        if (dev.VendorId > 0)
+        // 自动选择机型适配 (自动识别 SIBYL WS200 PRO 等全部型号，无需任何手动覆盖)
+        string model = "PRO";
+        if (!string.IsNullOrWhiteSpace(dev.ModelName) && dev.ModelName != "PRO")
         {
-            string model = SibylDeviceMatcher.ResolveModelName(dev.VendorId);
-            if (!string.IsNullOrEmpty(dev.ModelName))
-            {
-                model = dev.ModelName;
-            }
-
-            CurrentProfile = DeviceModelProfiles.MatchProfileByName(model);
-            AddLog($"[MODEL] 自动机型适配: {model} (VendorId: 0x{dev.VendorId:X4})");
+            model = dev.ModelName;
         }
+        else if (!string.IsNullOrWhiteSpace(dev.Name))
+        {
+            model = SibylDeviceMatcher.ExtractModelFromName(dev.Name);
+        }
+        else if (dev.VendorId > 0)
+        {
+            model = SibylDeviceMatcher.ResolveModelName(dev.VendorId);
+        }
+
+        CurrentProfile = DeviceModelProfiles.MatchProfileByName(model);
+        AddLog($"[MODEL] 自动机型适配完成: {CurrentProfile.DisplayName} (识别型号: {model})");
 
         try
         {
