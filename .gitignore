@@ -8,6 +8,11 @@ obj/
 .vs/
 *.nupkg
 
+# Build output
+/dist/
+/publish/
+/artifacts/
+
 # Python / Tools temp
 /tmp/
 *.apk

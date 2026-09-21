@@ -1,35 +1,42 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
-    <OutputType>Exe</OutputType>
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
-    <UseWPF>true</UseWPF>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="!$([MSBuild]::IsOSPlatform('Windows'))">
-    <TargetFramework>net8.0</TargetFramework>
-  </PropertyGroup>
-
-  <PropertyGroup>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>SibylEarbuds.App</RootNamespace>
     <AssemblyName>SibylEarbudsManager</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+
+    <!-- WinUI 3 / Windows App SDK -->
+    <UseWinUI>true</UseWinUI>
+    <Platforms>x64;ARM64</Platforms>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+
+    <!-- Unpackaged, self-contained distribution (no MSIX, no runtime install required) -->
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained Condition="'$(RuntimeIdentifier)' != ''">true</WindowsAppSDKSelfContained>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.260224002" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\SibylEarbuds.Core\SibylEarbuds.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Resources\Audio\*.mp3">
+    <Content Include="Resources\Audio\*.mp3">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="Resources\Images\**\*.*">
+    </Content>
+    <Content Include="Resources\Images\**\*.*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    </Content>
   </ItemGroup>
 
 </Project>

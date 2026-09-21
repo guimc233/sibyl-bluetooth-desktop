@@ -6,6 +6,19 @@ public record DiscoveredBleDevice(string Id, string Name, int Rssi)
     public bool IsSibylVerified { get; init; } = true;
     public string? ChipName { get; init; }
 
+    /// <summary>官方 VendorId（来自厂商广播前 2 字节，Big-Endian），用于自动机型适配。</summary>
+    public int VendorId { get; init; }
+
+    /// <summary>官方产品清单解析出的机型名（如 S1 / B1 / Y1），空表示未知机型。</summary>
+    public string ModelName { get; init; } = string.Empty;
+
+    /// <summary>广播自带的电量信息（-1 表示未知）。</summary>
+    public int LeftBattery { get; init; } = -1;
+
+    public int RightBattery { get; init; } = -1;
+
+    public int CaseBattery { get; init; } = -1;
+
     public string SignalLevel => Rssi switch
     {
         >= -55 => "极佳",

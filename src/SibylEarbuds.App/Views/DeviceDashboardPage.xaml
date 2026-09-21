@@ -1,0 +1,394 @@
+<Page
+    x:Class="SibylEarbuds.App.Views.DeviceDashboardPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:SibylEarbuds.App.Controls"
+    xmlns:conv="using:SibylEarbuds.App.Converters"
+    Background="Transparent">
+
+    <Grid Margin="24,12,24,24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Page header -->
+        <Grid Grid.Row="0" Margin="0,0,0,16" ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <Button
+                Grid.Column="0"
+                Command="{x:Bind Vm.BackToDiscoveryCommand}"
+                ToolTipService.ToolTip="返回设备发现页"
+                AutomationProperties.Name="返回">
+                <FontIcon Glyph="&#xE72B;" FontSize="14" />
+            </Button>
+
+            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock Text="{x:Bind Vm.DeviceName, Mode=OneWay}" Style="{StaticResource SubtitleTextBlockStyle}" />
+                <TextBlock Text="{x:Bind Vm.CurrentProfile.DisplayName, Mode=OneWay}" Style="{StaticResource AppCaptionStyle}" />
+            </StackPanel>
+
+            <Border
+                Grid.Column="2"
+                Background="{ThemeResource AccentFillColorDefaultBrush}"
+                CornerRadius="4"
+                Padding="8,3"
+                VerticalAlignment="Center"
+                Visibility="{x:Bind conv:VisibilityHelper.Visible(Vm.IsConnected), Mode=OneWay}">
+                <TextBlock
+                    Text="{x:Bind Vm.ConnectionStatusText, Mode=OneWay}"
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
+            </Border>
+
+            <Button
+                Grid.Column="3"
+                Content="断开设备"
+                Style="{StaticResource AppCompactButtonStyle}"
+                Command="{x:Bind Vm.DisconnectCommand}" />
+        </Grid>
+
+        <!-- Two-pane content -->
+        <Grid Grid.Row="1" ColumnSpacing="16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="360" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Left pane -->
+            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
+                <StackPanel Spacing="12">
+
+                    <Border Style="{StaticResource AppCardStyle}">
+                        <StackPanel Spacing="12">
+                            <Grid>
+                                <TextBlock Text="耳机状态与电量" Style="{StaticResource AppSectionHeaderStyle}" Margin="0" />
+                                <TextBlock
+                                    Text="{x:Bind Vm.CurrentProfile.ChipDescription, Mode=OneWay}"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center"
+                                    Style="{StaticResource AppCaptionStyle}" />
+                            </Grid>
+
+                            <Grid ColumnSpacing="10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <controls:EarbudVisualControl
+                                    Grid.Column="0"
+                                    Label="左耳 (L)"
+                                    Battery="{x:Bind Vm.LeftBattery, Mode=OneWay}"
+                                    IsCharging="{x:Bind Vm.IsLeftCharging, Mode=OneWay}" />
+                                <controls:EarbudVisualControl
+                                    Grid.Column="1"
+                                    Label="右耳 (R)"
+                                    IsRightSide="True"
+                                    Battery="{x:Bind Vm.RightBattery, Mode=OneWay}"
+                                    IsCharging="{x:Bind Vm.IsRightCharging, Mode=OneWay}" />
+                                <controls:EarbudVisualControl
+                                    Grid.Column="2"
+                                    Label="充电盒"
+                                    IsCaseMode="True"
+                                    Battery="{x:Bind Vm.CaseBattery, Mode=OneWay}"
+                                    IsCharging="{x:Bind Vm.IsCaseCharging, Mode=OneWay}"
+                                    Visibility="{x:Bind conv:VisibilityHelper.Visible(Vm.HasCaseBattery), Mode=OneWay}" />
+                            </Grid>
+
+                            <TextBlock Style="{StaticResource AppCaptionStyle}" Text="电量 -- 表示尚未由耳机回报" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource AppCardStyle}" Visibility="{x:Bind Vm.CurrentProfile.SupportsAnc, Mode=OneWay}">
+                        <StackPanel Spacing="12">
+                            <TextBlock Text="降噪控制 (ANC)" Style="{StaticResource AppSectionHeaderStyle}" Margin="0" />
+
+                            <RadioButtons SelectedIndex="{x:Bind Vm.AncModeIndex, Mode=TwoWay}" MaxColumns="3">
+                                <RadioButton Content="降噪" />
+                                <RadioButton Content="普通" />
+                                <RadioButton Content="通透" />
+                            </RadioButtons>
+
+                            <Border Style="{StaticResource AppInsetCardStyle}" Visibility="{x:Bind Vm.SupportsAncDepthNow, Mode=OneWay}">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="降噪等级" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                                    <RadioButtons SelectedIndex="{x:Bind Vm.AncDepthIndex, Mode=TwoWay}" MaxColumns="2">
+                                        <RadioButton Content="舒适降噪 (50%)" />
+                                        <RadioButton Content="深度降噪 (100%)" />
+                                    </RadioButtons>
+                                </StackPanel>
+                            </Border>
+
+                            <TextBlock Text="{x:Bind Vm.AncStatusText, Mode=OneWay}" Style="{StaticResource AppCaptionStyle}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource AppCardStyle}">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="功能快捷开关" Style="{StaticResource AppSectionHeaderStyle}" Margin="0" />
+
+                            <ToggleSwitch
+                                Header="游戏模式 (38ms 低延迟)"
+                                IsOn="{x:Bind Vm.IsGameMode, Mode=TwoWay}"
+                                Visibility="{x:Bind Vm.CurrentProfile.SupportsGameMode, Mode=OneWay}" />
+                            <ToggleSwitch
+                                Header="触控防误触锁定"
+                                IsOn="{x:Bind Vm.IsTouchDisabled, Mode=TwoWay}"
+                                Visibility="{x:Bind Vm.CurrentProfile.SupportsTouchLock, Mode=OneWay}" />
+                            <ToggleSwitch
+                                Header="Hi-Res / LDAC 高清解码"
+                                IsOn="{x:Bind Vm.IsLdacEnabled, Mode=TwoWay}"
+                                Visibility="{x:Bind Vm.CurrentProfile.SupportsLdacHiRes, Mode=OneWay}" />
+
+                            <Grid ColumnSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="寻找耳机" VerticalAlignment="Center" />
+                                <Button
+                                    Grid.Column="1"
+                                    Content="{x:Bind Vm.FindEarphoneButtonText, Mode=OneWay}"
+                                    Style="{StaticResource AppCompactButtonStyle}"
+                                    Command="{x:Bind Vm.ToggleFindEarphoneCommand}" />
+                            </Grid>
+
+                            <Grid ColumnSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="定时自动关机" VerticalAlignment="Center" />
+                                <ComboBox
+                                    Grid.Column="1"
+                                    Width="140"
+                                    DisplayMemberPath="Display"
+                                    ItemsSource="{x:Bind Vm.ShutdownOptions}"
+                                    SelectedItem="{x:Bind Vm.SelectedShutdown, Mode=TwoWay}" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource AppCardStyle}">
+                        <StackPanel Spacing="10">
+                            <Grid>
+                                <TextBlock Text="内置疗愈白噪音" Style="{StaticResource AppSectionHeaderStyle}" Margin="0" />
+                                <Button
+                                    HorizontalAlignment="Right"
+                                    Content="停止"
+                                    Style="{StaticResource AppCompactButtonStyle}"
+                                    Command="{x:Bind Vm.StopSoundCommand}" />
+                            </Grid>
+
+                            <Grid ColumnSpacing="6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Button
+                                    Grid.Column="0"
+                                    Content="粉红噪音"
+                                    HorizontalAlignment="Stretch"
+                                    Style="{StaticResource AppCompactButtonStyle}"
+                                    Command="{x:Bind Vm.PlaySoundCommand}"
+                                    CommandParameter="{x:Bind Vm.SoundPink}" />
+                                <Button
+                                    Grid.Column="1"
+                                    Content="森林鸟鸣"
+                                    HorizontalAlignment="Stretch"
+                                    Style="{StaticResource AppCompactButtonStyle}"
+                                    Command="{x:Bind Vm.PlaySoundCommand}"
+                                    CommandParameter="{x:Bind Vm.SoundBirds}" />
+                                <Button
+                                    Grid.Column="2"
+                                    Content="淅沥细雨"
+                                    HorizontalAlignment="Stretch"
+                                    Style="{StaticResource AppCompactButtonStyle}"
+                                    Command="{x:Bind Vm.PlaySoundCommand}"
+                                    CommandParameter="{x:Bind Vm.SoundRain}" />
+                            </Grid>
+
+                            <Slider
+                                Header="播放音量"
+                                Minimum="0"
+                                Maximum="1"
+                                StepFrequency="0.05"
+                                Value="{x:Bind Vm.SoundVolume, Mode=TwoWay}" />
+                            <TextBlock
+                                Text="{x:Bind Vm.CurrentSoundName, Mode=OneWay}"
+                                Style="{StaticResource AppCaptionStyle}" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Right pane -->
+            <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+                <StackPanel Spacing="12">
+
+                    <Border Style="{StaticResource AppCardStyle}" Visibility="{x:Bind Vm.CurrentProfile.SupportsEq, Mode=OneWay}">
+                        <StackPanel Spacing="12">
+                            <Grid>
+                                <StackPanel>
+                                    <TextBlock Text="10 段专业音乐均衡器" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                                    <TextBlock Text="31Hz - 16kHz | -8dB ~ +8dB | 80ms 防抖限流" Style="{StaticResource AppCaptionStyle}" />
+                                </StackPanel>
+                                <ComboBox
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center"
+                                    Width="170"
+                                    DisplayMemberPath="Name"
+                                    ItemsSource="{x:Bind Vm.EqPresets, Mode=OneWay}"
+                                    SelectedItem="{x:Bind Vm.SelectedEqPreset, Mode=TwoWay}" />
+                            </Grid>
+
+                            <Grid ColumnSpacing="4" Height="200">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0" Spacing="4">
+                                    <TextBlock Text="{x:Bind conv:DisplayHelper.SignedDb(Vm.EqBand0), Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
+                                    <Slider Orientation="Vertical" Height="140" Minimum="-8" Maximum="8" StepFrequency="1" SnapsTo="StepValues" Value="{x:Bind Vm.EqBand0, Mode=TwoWay}" />
+                                    <TextBlock Text="31" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Spacing="4">
+                                    <TextBlock Text="{x:Bind conv:DisplayHelper.SignedDb(Vm.EqBand1), Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
+                                    <Slider Orientation="Vertical" Height="140" Minimum="-8" Maximum="8" StepFrequency="1" SnapsTo="StepValues" Value="{x:Bind Vm.EqBand1, Mode=TwoWay}" />
+                                    <TextBlock Text="62" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Spacing="4">
+                                    <TextBlock Text="{x:Bind conv:DisplayHelper.SignedDb(Vm.EqBand2), Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
+                                    <Slider Orientation="Vertical" Height="140" Minimum="-8" Maximum="8" StepFrequency="1" SnapsTo="StepValues" Value="{x:Bind Vm.EqBand2, Mode=TwoWay}" />
+                                    <TextBlock Text="125" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="3" Spacing="4">
+                                    <TextBlock Text="{x:Bind conv:DisplayHelper.SignedDb(Vm.EqBand3), Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
+                                    <Slider Orientation="Vertical" Height="140" Minimum="-8" Maximum="8" StepFrequency="1" SnapsTo="StepValues" Value="{x:Bind Vm.EqBand3, Mode=TwoWay}" />
+                                    <TextBlock Text="250" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="4" Spacing="4">
+                                    <TextBlock Text="{x:Bind conv:DisplayHelper.SignedDb(Vm.EqBand4), Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
+                                    <Slider Orientation="Vertical" Height="140" Minimum="-8" Maximum="8" StepFrequency="1" SnapsTo="StepValues" Value="{x:Bind Vm.EqBand4, Mode=TwoWay}" />
+                                    <TextBlock Text="500" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="5" Spacing="4">
+                                    <TextBlock Text="{x:Bind conv:DisplayHelper.SignedDb(Vm.EqBand5), Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
+                                    <Slider Orientation="Vertical" Height="140" Minimum="-8" Maximum="8" StepFrequency="1" SnapsTo="StepValues" Value="{x:Bind Vm.EqBand5, Mode=TwoWay}" />
+                                    <TextBlock Text="1k" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="6" Spacing="4">
+                                    <TextBlock Text="{x:Bind conv:DisplayHelper.SignedDb(Vm.EqBand6), Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
+                                    <Slider Orientation="Vertical" Height="140" Minimum="-8" Maximum="8" StepFrequency="1" SnapsTo="StepValues" Value="{x:Bind Vm.EqBand6, Mode=TwoWay}" />
+                                    <TextBlock Text="2k" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="7" Spacing="4">
+                                    <TextBlock Text="{x:Bind conv:DisplayHelper.SignedDb(Vm.EqBand7), Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
+                                    <Slider Orientation="Vertical" Height="140" Minimum="-8" Maximum="8" StepFrequency="1" SnapsTo="StepValues" Value="{x:Bind Vm.EqBand7, Mode=TwoWay}" />
+                                    <TextBlock Text="4k" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="8" Spacing="4">
+                                    <TextBlock Text="{x:Bind conv:DisplayHelper.SignedDb(Vm.EqBand8), Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
+                                    <Slider Orientation="Vertical" Height="140" Minimum="-8" Maximum="8" StepFrequency="1" SnapsTo="StepValues" Value="{x:Bind Vm.EqBand8, Mode=TwoWay}" />
+                                    <TextBlock Text="8k" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="9" Spacing="4">
+                                    <TextBlock Text="{x:Bind conv:DisplayHelper.SignedDb(Vm.EqBand9), Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
+                                    <Slider Orientation="Vertical" Height="140" Minimum="-8" Maximum="8" StepFrequency="1" SnapsTo="StepValues" Value="{x:Bind Vm.EqBand9, Mode=TwoWay}" />
+                                    <TextBlock Text="16k" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <Grid ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="0" Style="{StaticResource AppCardStyle}" Visibility="{x:Bind Vm.CurrentProfile.SupportsKeyCustomization, Mode=OneWay}">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="按键触控自定义" Style="{StaticResource AppSectionHeaderStyle}" Margin="0" />
+                                <Grid ColumnSpacing="12" RowSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="左耳" Style="{StaticResource AppCaptionStyle}" />
+                                    <TextBlock Grid.Row="0" Grid.Column="2" Text="右耳" Style="{StaticResource AppCaptionStyle}" />
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="单击" VerticalAlignment="Center" />
+                                    <ComboBox Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" DisplayMemberPath="Display" ItemsSource="{x:Bind Vm.KeyFunctionOptions}" SelectedItem="{x:Bind Vm.LeftSingleTap, Mode=TwoWay}" />
+                                    <ComboBox Grid.Row="1" Grid.Column="2" HorizontalAlignment="Stretch" DisplayMemberPath="Display" ItemsSource="{x:Bind Vm.KeyFunctionOptions}" SelectedItem="{x:Bind Vm.RightSingleTap, Mode=TwoWay}" />
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="双击" VerticalAlignment="Center" />
+                                    <ComboBox Grid.Row="2" Grid.Column="1" HorizontalAlignment="Stretch" DisplayMemberPath="Display" ItemsSource="{x:Bind Vm.KeyFunctionOptions}" SelectedItem="{x:Bind Vm.LeftDoubleTap, Mode=TwoWay}" />
+                                    <ComboBox Grid.Row="2" Grid.Column="2" HorizontalAlignment="Stretch" DisplayMemberPath="Display" ItemsSource="{x:Bind Vm.KeyFunctionOptions}" SelectedItem="{x:Bind Vm.RightDoubleTap, Mode=TwoWay}" />
+
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="三击" VerticalAlignment="Center" />
+                                    <ComboBox Grid.Row="3" Grid.Column="1" HorizontalAlignment="Stretch" DisplayMemberPath="Display" ItemsSource="{x:Bind Vm.KeyFunctionOptions}" SelectedItem="{x:Bind Vm.LeftTripleTap, Mode=TwoWay}" />
+                                    <ComboBox Grid.Row="3" Grid.Column="2" HorizontalAlignment="Stretch" DisplayMemberPath="Display" ItemsSource="{x:Bind Vm.KeyFunctionOptions}" SelectedItem="{x:Bind Vm.RightTripleTap, Mode=TwoWay}" />
+
+                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="长按" VerticalAlignment="Center" />
+                                    <ComboBox Grid.Row="4" Grid.Column="1" HorizontalAlignment="Stretch" DisplayMemberPath="Display" ItemsSource="{x:Bind Vm.KeyFunctionOptions}" SelectedItem="{x:Bind Vm.LeftLongPress, Mode=TwoWay}" />
+                                    <ComboBox Grid.Row="4" Grid.Column="2" HorizontalAlignment="Stretch" DisplayMemberPath="Display" ItemsSource="{x:Bind Vm.KeyFunctionOptions}" SelectedItem="{x:Bind Vm.RightLongPress, Mode=TwoWay}" />
+                                </Grid>
+
+                                <Button
+                                    HorizontalAlignment="Stretch"
+                                    Content="保存手势映射"
+                                    Style="{StaticResource AppAccentButtonStyle}"
+                                    Command="{x:Bind Vm.SaveKeySettingsCommand}" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="1" Style="{StaticResource AppCardStyle}" Visibility="{x:Bind Vm.CurrentProfile.SupportsLightEffect, Mode=OneWay}">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="RGB 炫彩灯效" Style="{StaticResource AppSectionHeaderStyle}" Margin="0" />
+
+                                <RadioButtons SelectedIndex="{x:Bind Vm.LightModeIndex, Mode=TwoWay}" MaxColumns="3">
+                                    <RadioButton Content="常亮" />
+                                    <RadioButton Content="呼吸" />
+                                    <RadioButton Content="关闭" />
+                                </RadioButtons>
+
+                                <Slider Header="呼吸速度" Minimum="0" Maximum="7" StepFrequency="1" SnapsTo="StepValues" Value="{x:Bind Vm.LightSpeed, Mode=TwoWay}" />
+                                <Slider Header="灯光亮度" Minimum="0" Maximum="100" StepFrequency="1" SnapsTo="StepValues" Value="{x:Bind Vm.LightBrightness, Mode=TwoWay}" />
+
+                                <ColorPicker
+                                    Color="{x:Bind Vm.LightColor, Mode=TwoWay}"
+                                    IsAlphaEnabled="False"
+                                    IsAlphaSliderVisible="False"
+                                    IsAlphaTextInputVisible="False"
+                                    IsColorChannelTextInputVisible="False"
+                                    IsHexInputVisible="True"
+                                    ColorSpectrumShape="Box" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </Grid>
+</Page>

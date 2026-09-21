@@ -2,6 +2,9 @@ using System.Windows.Input;
 
 namespace SibylEarbuds.App.ViewModels;
 
+/// <summary>
+/// WinUI has no CommandManager, so CanExecuteChanged is raised explicitly.
+/// </summary>
 public class RelayCommand : ICommand
 {
     private readonly Action<object?> _execute;
@@ -14,19 +17,17 @@ public class RelayCommand : ICommand
     }
 
     public RelayCommand(Action execute, Func<bool>? canExecute = null)
-        : this(_ => execute(), canExecute != null ? _ => canExecute() : null)
+        : this(_ => execute(), canExecute is null ? null : _ => canExecute())
     {
     }
 
-    public event EventHandler? CanExecuteChanged
-    {
-        add => CommandManager.RequerySuggested += value;
-        remove => CommandManager.RequerySuggested -= value;
-    }
+    public event EventHandler? CanExecuteChanged;
 
-    public bool CanExecute(object? parameter) => _canExecute == null || _canExecute(parameter);
+    public bool CanExecute(object? parameter) => _canExecute is null || _canExecute(parameter);
 
     public void Execute(object? parameter) => _execute(parameter);
+
+    public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
 }
 
 public class AsyncRelayCommand : ICommand
@@ -42,24 +43,24 @@ public class AsyncRelayCommand : ICommand
     }
 
     public AsyncRelayCommand(Func<Task> execute, Func<bool>? canExecute = null)
-        : this(_ => execute(), canExecute != null ? _ => canExecute() : null)
+        : this(_ => execute(), canExecute is null ? null : _ => canExecute())
     {
     }
 
-    public event EventHandler? CanExecuteChanged
-    {
-        add => CommandManager.RequerySuggested += value;
-        remove => CommandManager.RequerySuggested -= value;
-    }
+    public event EventHandler? CanExecuteChanged;
 
-    public bool CanExecute(object? parameter) => !_isExecuting && (_canExecute == null || _canExecute(parameter));
+    public bool CanExecute(object? parameter)
+        => !_isExecuting && (_canExecute is null || _canExecute(parameter));
 
     public async void Execute(object? parameter)
     {
-        if (!CanExecute(parameter)) return;
+        if (!CanExecute(parameter))
+        {
+            return;
+        }
 
         _isExecuting = true;
-        CommandManager.InvalidateRequerySuggested();
+        RaiseCanExecuteChanged();
         try
         {
             await _execute(parameter);
@@ -67,7 +68,9 @@ public class AsyncRelayCommand : ICommand
         finally
         {
             _isExecuting = false;
-            CommandManager.InvalidateRequerySuggested();
+            RaiseCanExecuteChanged();
         }
     }
+
+    public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
 }

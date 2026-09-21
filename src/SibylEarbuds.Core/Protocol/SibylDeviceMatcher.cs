@@ -1,91 +1,103 @@
 namespace SibylEarbuds.Core.Protocol;
 
 /// <summary>
-/// SIBYL 官方广播包校验与耳机设备判定逻辑 (从 APK 逆向提取)
+/// 从官方 Android 客户端 (BLEScanManager) 逆向提取的 SIBYL 耳机广播识别结果。
+/// 厂商数据 payload 结构 (紧跟 2 字节 Company ID 之后):
+///   [0..1]  VendorId  机型 ID (Big-Endian)
+///   [2..4]  左/右/仓 电量 (bit7 为充电标志)
+///   [5]     Status
+///   [6..11] BLE MAC
+///   [12..17] 可选第二 MAC (长度 &gt;= 18 时存在)
+/// 官方要求 payload 长度 &gt;= 12 且 VendorId 必须在产品清单中，否则设备直接忽略。
+/// </summary>
+public readonly record struct SibylAdvertisement(
+    int VendorId,
+    string ModelName,
+    int LeftBattery,
+    int RightBattery,
+    int CaseBattery);
+
+/// <summary>
+/// SIBYL 官方广播识别（厂商数据过滤器），与 Android 端 BLEScanManager 完全一致：
+/// 扫描器只关心 CompanyID = 0xC912 的厂商广播，根据 VendorId 在官方产品清单中
+/// 查到机型才纳入设备列表 —— 因此设备列表只会出现官方 SIBYL 耳机。
 /// </summary>
 public static class SibylDeviceMatcher
 {
-    // 官方定义的常用厂商标识与型号前缀
-    public static readonly string[] KnownNamePrefixes =
-    [
-        "SIBYL", "WEDOING", "B1", "S1", "S7", "S10", "S11",
-        "B6", "B8", "B14", "Y1", "Y7", "Y8", "Y9", "CH500",
-        "WF200", "WS200"
-    ];
-
-    // 官方 APK 广播包含的特定 Service UUID 列表 (16位/128位)
-    public static readonly ushort[] KnownServiceUuids16 =
-    [
-        0xAE00, 0xAE01, 0xAE02, // 杰理
-        0x000B,                 // SIBYL Primary
-        0xFEE7, 0xFFF0          // 炬力/瑞昱常用
-    ];
+    /// <summary>
+    /// 官方 FILTERID / flageId = 51474 (0xC912)，即广播中的厂商 Company ID。
+    /// </summary>
+    public const ushort SibylManufacturerId = 51474;
 
     /// <summary>
-    /// 综合判定是否为 SIBYL 耳机设备
-    /// 支持三种判断层级：
-    /// 1. 广播服务 UUID 匹配
-    /// 2. Manufacturer Specific Data 杰理/炬力 0x3E21 / 0x12CC 特征
-    /// 3. 设备本地名称前缀或白名单
+    /// 官方要求的最小广播 payload 长度。
     /// </summary>
-    public static bool IsSibylEarbuds(
-        string? localName,
-        IEnumerable<Guid>? serviceUuids = null,
-        IReadOnlyDictionary<ushort, byte[]>? manufacturerData = null)
+    public const int MinAdvertisementLength = 12;
+
+    /// <summary>
+    /// 官方产品清单 (res/raw/earphone_list.json)：VendorId → 机型名。
+    /// Reader: 15377(0x3C11)=S1, 15889(0x3E11)=S7, 15895(0x3E17)=S10,
+    ///         15921(0x3E31)=B1, 16017(0x3E91)=B1, 15985(0x3E71)=Y1, 16193(0x3F41)=Y1
+    /// </summary>
+    public static readonly IReadOnlyDictionary<ushort, string> KnownModels =
+        new Dictionary<ushort, string>
+        {
+            [15377] = "S1",
+            [15889] = "S7",
+            [15895] = "S10",
+            [15921] = "B1",
+            [16017] = "B1",
+            [15985] = "Y1",
+            [16193] = "Y1"
+        };
+
+    /// <summary>
+    /// 综合判定广播包是否来自官方 SIBYL 耳机（严格模式，仅当可通过
+    /// <see cref="TryParseSibylAdvertisement"/> 解析出已知机型时为 true）。
+    /// </summary>
+    public static bool IsSibylEarbuds(IReadOnlyDictionary<ushort, byte[]>? manufacturerData)
+        => TryParseSibylAdvertisement(manufacturerData, out _);
+
+    /// <summary>
+    /// 官方 APK 广播识别算法：
+    /// 1. 必须存在 CompanyID = <see cref="SibylManufacturerId"/> 的厂商数据；
+    /// 2. payload 长度必须 &gt;= <see cref="MinAdvertisementLength"/>；
+    /// 3. 前 2 字节 (Big-Endian) 的 VendorId 必须在官方产品清单中。
+    /// 条件不满足时设备将被直接忽略，不会出现在列表中。
+    /// </summary>
+    public static bool TryParseSibylAdvertisement(
+        IReadOnlyDictionary<ushort, byte[]>? manufacturerData,
+        out SibylAdvertisement advertisement)
     {
-        // 1. 优先检查 Service UUIDs
-        if (serviceUuids != null)
+        advertisement = default;
+
+        if (manufacturerData is null ||
+            !manufacturerData.TryGetValue(SibylManufacturerId, out byte[]? payload) ||
+            payload is null ||
+            payload.Length < MinAdvertisementLength)
         {
-            foreach (var uuid in serviceUuids)
-            {
-                if (SibylUuids.CandidateServiceUuids.Contains(uuid))
-                {
-                    return true;
-                }
-            }
+            return false;
         }
 
-        // 2. 检查 Manufacturer Data (如 0x3E21 / 0x12CC / 杰理厂家ID)
-        if (manufacturerData != null)
+        int vendorId = ((payload[0] & 0xFF) << 8) | (payload[1] & 0xFF);
+        if (!KnownModels.TryGetValue((ushort)vendorId, out string? modelName))
         {
-            foreach (var kvp in manufacturerData)
-            {
-                // 杰理常用 Company ID: 0x05D6 等，或厂商自定义字段 0x3E21
-                if (kvp.Key == 0x3E21 || kvp.Key == 0x3E22 || kvp.Key == 0x3D11 || kvp.Key == 0x12CC)
-                {
-                    return true;
-                }
-
-                // 检查 payload 中是否包含 0x12CC 或 0x3E21
-                var bytes = kvp.Value;
-                if (bytes != null && bytes.Length >= 2)
-                {
-                    for (int i = 0; i < bytes.Length - 1; i++)
-                    {
-                        ushort word = (ushort)(bytes[i] | (bytes[i + 1] << 8));
-                        if (word == 0x12CC || word == 0x3E21 || word == 0x3E22 || word == 0x3D11)
-                        {
-                            return true;
-                        }
-                    }
-                }
-            }
+            return false;
         }
 
-        // 3. 检查设备名称前缀
-        if (!string.IsNullOrWhiteSpace(localName))
-        {
-            string upper = localName.Trim().ToUpperInvariant();
-            foreach (var prefix in KnownNamePrefixes)
-            {
-                if (upper.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ||
-                    upper.Contains(prefix, StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-            }
-        }
+        advertisement = new SibylAdvertisement(
+            vendorId,
+            modelName,
+            payload.Length > 2 ? payload[2] & 0x7F : -1,
+            payload.Length > 3 ? payload[3] & 0x7F : -1,
+            payload.Length > 4 ? payload[4] & 0x7F : -1);
 
-        return false;
+        return true;
     }
+
+    /// <summary>
+    /// 反查 VendorId 对应的官方机型名，未知时返回通用 "PRO"。
+    /// </summary>
+    public static string ResolveModelName(int vendorId)
+        => KnownModels.TryGetValue((ushort)vendorId, out string? name) ? name : "PRO";
 }

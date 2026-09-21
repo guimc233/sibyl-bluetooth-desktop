@@ -1,5 +1,4 @@
 #if WINDOWS
-using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.Advertisement;
 using Windows.Devices.Bluetooth.GenericAttributeProfile;
@@ -48,13 +47,9 @@ public class WinRtBleTransport : IBleTransport
 
             _continuousWatcher.Received += (sender, args) =>
             {
-                string devName = args.Advertisement.LocalName;
                 string id = args.BluetoothAddress.ToString("X");
 
-                // 收集广播的 Service UUIDs
-                var serviceUuids = args.Advertisement.ServiceUuids.ToList();
-
-                // 收集 Manufacturer Data
+                // 官方 APK 精确过滤：CompanyID=0xC912 厂商广播 + 已知机型 VendorId，否则直接忽略
                 var manData = new Dictionary<ushort, byte[]>();
                 foreach (var md in args.Advertisement.ManufacturerData)
                 {
@@ -64,19 +59,23 @@ public class WinRtBleTransport : IBleTransport
                     manData[md.CompanyId] = bytes;
                 }
 
-                // 采用官方 APK 精确过滤算法：判断是否为 SIBYL 耳机
-                bool isSibyl = SibylDeviceMatcher.IsSibylEarbuds(devName, serviceUuids, manData);
+                if (!SibylDeviceMatcher.TryParseSibylAdvertisement(manData, out var adv))
+                {
+                    return;
+                }
 
-                // 如果名称为空且不是 SIBYL 广播特征，则忽略无用 Beacon
-                if (string.IsNullOrWhiteSpace(devName) && !isSibyl) return;
-
-                string displayName = string.IsNullOrWhiteSpace(devName)
-                    ? (isSibyl ? "SIBYL 无线耳机 (待命名)" : $"未知蓝牙设备 [{id}]")
-                    : devName;
+                string displayName = string.IsNullOrWhiteSpace(args.Advertisement.LocalName)
+                    ? $"SIBYL {adv.ModelName}"
+                    : args.Advertisement.LocalName;
 
                 var discovered = new DiscoveredBleDevice(id, displayName, args.RawSignalStrengthInDBm)
                 {
-                    IsSibylVerified = isSibyl,
+                    IsSibylVerified = true,
+                    VendorId = adv.VendorId,
+                    ModelName = adv.ModelName,
+                    LeftBattery = adv.LeftBattery,
+                    RightBattery = adv.RightBattery,
+                    CaseBattery = adv.CaseBattery,
                     LastSeen = DateTime.UtcNow
                 };
 
@@ -124,17 +123,34 @@ public class WinRtBleTransport : IBleTransport
 
         watcher.Received += (sender, args) =>
         {
-            string devName = args.Advertisement.LocalName;
             string id = args.BluetoothAddress.ToString("X");
-            var serviceUuids = args.Advertisement.ServiceUuids.ToList();
-            bool isSibyl = SibylDeviceMatcher.IsSibylEarbuds(devName, serviceUuids, null);
 
-            if (string.IsNullOrWhiteSpace(devName) && !isSibyl) return;
+            var manData = new Dictionary<ushort, byte[]>();
+            foreach (var md in args.Advertisement.ManufacturerData)
+            {
+                using var reader = DataReader.FromBuffer(md.Data);
+                byte[] bytes = new byte[md.Data.Length];
+                reader.ReadBytes(bytes);
+                manData[md.CompanyId] = bytes;
+            }
 
-            string displayName = string.IsNullOrWhiteSpace(devName) ? $"SIBYL 耳机 [{id}]" : devName;
+            if (!SibylDeviceMatcher.TryParseSibylAdvertisement(manData, out var adv))
+            {
+                return;
+            }
+
+            string displayName = string.IsNullOrWhiteSpace(args.Advertisement.LocalName)
+                ? $"SIBYL {adv.ModelName}"
+                : args.Advertisement.LocalName;
+
             var item = new DiscoveredBleDevice(id, displayName, args.RawSignalStrengthInDBm)
             {
-                IsSibylVerified = isSibyl
+                IsSibylVerified = true,
+                VendorId = adv.VendorId,
+                ModelName = adv.ModelName,
+                LeftBattery = adv.LeftBattery,
+                RightBattery = adv.RightBattery,
+                CaseBattery = adv.CaseBattery
             };
             discovered[id] = item;
             OnDeviceFound?.Invoke(item);

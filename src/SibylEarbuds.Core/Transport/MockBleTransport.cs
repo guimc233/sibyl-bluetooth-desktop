@@ -1,5 +1,6 @@
 using SibylEarbuds.Core.Models;
 using SibylEarbuds.Core.Protocol;
+using SibylEarbuds.Core.Transport;
 
 namespace SibylEarbuds.Core.Transport;
 
@@ -24,15 +25,59 @@ public class MockBleTransport : IBleTransport
     private bool _isScanning = false;
     private CancellationTokenSource? _scanCts;
 
+    // 仅模拟官方产品清单内的机型（与真实扫描器一致：只出现官方 SIBYL 耳机）
     private static readonly List<DiscoveredBleDevice> _mockDevices =
     [
-        new("3E21-0001", "SIBYL S1 ANC (旗舰真无线)", -52) { IsSibylVerified = true, ChipName = "杰理 AC6973D8" },
-        new("3E21-0002", "SIBYL B1 Pro (Dual-Mode)", -48) { IsSibylVerified = true, ChipName = "杰理 AC6973D8" },
-        new("3E21-0006", "SIBYL B6 (RGB电竞耳机)", -64) { IsSibylVerified = true, ChipName = "杰理 AC697N" },
-        new("3E22-0010", "SIBYL S10 (半入耳音乐)", -70) { IsSibylVerified = true, ChipName = "杰理 AC6973D8" },
-        new("3E22-0011", "SIBYL S11 LDAC (Hi-Res)", -58) { IsSibylVerified = true, ChipName = "瑞昱 RTL8773" },
-        new("3D11-0001", "SIBYL Y1 (低延迟游戏版)", -66) { IsSibylVerified = true, ChipName = "炬力 ATS3015" },
-        new("GENERIC-01", "未识别的普通蓝牙设备", -88) { IsSibylVerified = false, ChipName = "未知" }
+        new("A0:01:01:00:00:01", "SIBYL S1 ANC (旗舰真无线)", -52)
+        {
+            IsSibylVerified = true,
+            VendorId = 15377,           // 0x3C11 -> S1
+            ModelName = "S1",
+            ChipName = "杰理 AC6973D8",
+            LeftBattery = 85,
+            RightBattery = 90,
+            CaseBattery = 100
+        },
+        new("A0:01:01:00:00:02", "SIBYL S7", -58)
+        {
+            IsSibylVerified = true,
+            VendorId = 15889,           // 0x3E11 -> S7
+            ModelName = "S7",
+            ChipName = "杰理 AC6973D8",
+            LeftBattery = 70,
+            RightBattery = 75,
+            CaseBattery = 60
+        },
+        new("A0:01:01:00:00:03", "SIBYL S10 (半入耳音乐)", -70)
+        {
+            IsSibylVerified = true,
+            VendorId = 15895,           // 0x3E17 -> S10
+            ModelName = "S10",
+            ChipName = "杰理 AC6973D8",
+            LeftBattery = 40,
+            RightBattery = 35,
+            CaseBattery = 20
+        },
+        new("A0:01:01:00:00:04", "SIBYL B1 (Dual-Mode)", -48)
+        {
+            IsSibylVerified = true,
+            VendorId = 16017,           // 0x3E91 -> B1
+            ModelName = "B1",
+            ChipName = "杰理 AC6973D8",
+            LeftBattery = 88,
+            RightBattery = 92,
+            CaseBattery = 100
+        },
+        new("A0:01:01:00:00:05", "SIBYL Y1 (低延迟游戏版)", -66)
+        {
+            IsSibylVerified = true,
+            VendorId = 15985,           // 0x3E71 -> Y1
+            ModelName = "Y1",
+            ChipName = "炬力 ATS3015",
+            LeftBattery = 65,
+            RightBattery = 62,
+            CaseBattery = -1
+        }
     ];
 
     public Task StartContinuousScanAsync()
@@ -42,7 +87,7 @@ public class MockBleTransport : IBleTransport
         _scanCts = new CancellationTokenSource();
         var token = _scanCts.Token;
 
-        OnLog?.Invoke("[MOCK] 开启持续后台蓝牙扫描 (SIBYL 设备优先判定)...");
+        OnLog?.Invoke("[MOCK] 开启持续后台蓝牙扫描 (官方厂商广播过滤: 仅 SIBYL 耳机)...");
 
         _ = Task.Run(async () =>
         {
@@ -53,7 +98,7 @@ public class MockBleTransport : IBleTransport
                 {
                     var dev = _mockDevices[index++];
                     OnDeviceFound?.Invoke(dev);
-                    OnLog?.Invoke($"[MOCK-SCAN] 发现蓝牙设备: {dev.Name} (SIBYL认证: {dev.IsSibylVerified}, RSSI: {dev.Rssi} dBm)");
+                    OnLog?.Invoke($"[MOCK-SCAN] 发现 SIBYL 设备: {dev.Name} (机型: {dev.ModelName}, VendorId: 0x{dev.VendorId:X4}, RSSI: {dev.Rssi} dBm)");
                 }
                 else
                 {
@@ -81,7 +126,7 @@ public class MockBleTransport : IBleTransport
 
     public async Task<IReadOnlyList<DiscoveredBleDevice>> ScanDevicesAsync(int timeoutMs = 4000)
     {
-        OnLog?.Invoke("[MOCK] 单次扫描低功耗蓝牙设备...");
+        OnLog?.Invoke("[MOCK] 单次扫描低功耗蓝牙设备 (官方厂商广播过滤)...");
         await Task.Delay(500);
         foreach (var dev in _mockDevices)
         {
@@ -98,10 +143,10 @@ public class MockBleTransport : IBleTransport
 
         IsConnected = true;
         ConnectedDeviceId = deviceId;
-        var matched = _mockDevices.FirstOrDefault(d => d.Id == deviceId);
+        var matched = _mockDevices.FirstOrDefault(d => d.Id.Equals(deviceId, StringComparison.OrdinalIgnoreCase));
         ConnectedDeviceName = matched?.Name ?? "SIBYL S1 ANC";
         OnConnectionStateChanged?.Invoke(true);
-        OnLog?.Invoke($"[MOCK] 连接成功! GATT 通信通道就绪，A2DP 音频纯净隔离");
+        OnLog?.Invoke($"[MOCK] 连接成功! GATT 通信通道就绪（机型自动适配: {matched?.ModelName ?? "默认"}），A2DP 音频纯净隔离");
 
         SendMockStatusReport();
         return true;

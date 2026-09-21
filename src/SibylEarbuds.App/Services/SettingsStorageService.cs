@@ -8,7 +8,6 @@ public class AppSettings
     public string? LastConnectedDeviceId { get; set; }
     public string? LastConnectedDeviceName { get; set; }
     public bool AutoReconnect { get; set; } = true;
-    public string? CustomModelOverride { get; set; }
 }
 
 public static class SettingsStorageService

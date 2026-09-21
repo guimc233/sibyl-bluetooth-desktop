@@ -1,62 +1,64 @@
+using System.Diagnostics;
 using System.IO;
 using System.Text;
-using System.Windows;
+using Microsoft.UI.Xaml;
+using SibylEarbuds.App.ViewModels;
 
 namespace SibylEarbuds.App;
 
 public partial class App : Application
 {
-    protected override void OnStartup(StartupEventArgs e)
+    private Window? _window;
+
+    /// <summary>
+    /// Single shared view model for the whole shell (both pages bind to it).
+    /// Created on the UI thread inside <see cref="OnLaunched"/>.
+    /// </summary>
+    public MainViewModel? MainViewModel { get; private set; }
+
+    public App()
     {
-        // 挂载全局异常拦截，确保在任何错误发生时，都会打印到控制台并在弹出对话框的同时记录到日志文件
-        AppDomain.CurrentDomain.UnhandledException += (s, args) =>
+        InitializeComponent();
+        UnhandledException += OnUnhandledException;
+        AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+            WriteCrashLog("AppDomain.UnhandledException", e.ExceptionObject as Exception);
+        TaskScheduler.UnobservedTaskException += (_, e) =>
         {
-            HandleFatalException("AppDomain.UnhandledException", args.ExceptionObject as Exception);
+            WriteCrashLog("TaskScheduler.UnobservedTaskException", e.Exception);
+            e.SetObserved();
         };
-
-        DispatcherUnhandledException += (s, args) =>
-        {
-            HandleFatalException("DispatcherUnhandledException", args.Exception);
-            args.Handled = true;
-        };
-
-        TaskScheduler.UnobservedTaskException += (s, args) =>
-        {
-            HandleFatalException("TaskScheduler.UnobservedTaskException", args.Exception);
-            args.SetObserved();
-        };
-
-        Console.OutputEncoding = Encoding.UTF8;
-        Console.WriteLine("==================================================================");
-        Console.WriteLine("  SIBYL Earbuds Manager - Windows 10/11 电脑版耳机控制中枢启动");
-        Console.WriteLine("==================================================================");
-        Console.WriteLine($"  .NET Version: {Environment.Version}");
-        Console.WriteLine($"  OS Version:   {Environment.OSVersion}");
-        Console.WriteLine($"  Time:         {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
-        Console.WriteLine("  物理音频隔离保障: A2DP 纯净立体声保留，控制流走纯 BLE GATT 通道");
-        Console.WriteLine("------------------------------------------------------------------\n");
-
-        base.OnStartup(e);
     }
 
-    private static void HandleFatalException(string source, Exception? ex)
+    protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        string message = $"[致命错误] {source}: {ex?.Message}\n{ex?.StackTrace}";
-        Console.ForegroundColor = ConsoleColor.Red;
-        Console.WriteLine(message);
-        Console.ResetColor();
+        MainViewModel = new MainViewModel();
+        _window = new MainWindow();
+        _window.Activate();
+
+        Debug.WriteLine("SIBYL Earbuds Manager started (WinUI 3 / Windows App SDK).");
+    }
+
+    private void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
+    {
+        WriteCrashLog("Application.UnhandledException", e.Exception);
+    }
+
+    private static void WriteCrashLog(string source, Exception? ex)
+    {
+        string message = $"[致命错误] {source}: {ex?.Message}{Environment.NewLine}{ex?.StackTrace}";
+        Debug.WriteLine(message);
 
         try
         {
-            File.AppendAllText("crash.log", $"[{DateTime.Now}] {message}\n\n");
+            string path = Path.Combine(AppContext.BaseDirectory, "crash.log");
+            File.AppendAllText(
+                path,
+                $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}{Environment.NewLine}{Environment.NewLine}",
+                Encoding.UTF8);
         }
-        catch { }
-
-        MessageBox.Show(
-            $"程序运行遇到错误:\n\n{ex?.Message}\n\n详细信息已记录至 crash.log，如有控制台窗口请查看控制台输出。",
-            "SIBYL 耳机控制程序异常",
-            MessageBoxButton.OK,
-            MessageBoxImage.Error
-        );
+        catch
+        {
+            // Logging must never take the app down.
+        }
     }
 }
