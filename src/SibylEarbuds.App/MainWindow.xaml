@@ -8,8 +8,8 @@
         xmlns:controls="clr-namespace:SibylEarbuds.App.Controls"
         xmlns:converters="clr-namespace:SibylEarbuds.App.Converters"
         mc:Ignorable="d"
-        Title="SIBYL MUSIC - 耳机控制中心" 
-        Height="780" Width="1080" MinHeight="700" MinWidth="960"
+        Title="SIBYL MUSIC - 电脑版耳机控制中枢" 
+        Height="800" Width="1100" MinHeight="720" MinWidth="980"
         WindowStartupLocation="CenterScreen"
         Background="#202020" Foreground="#FFFFFF"
         FontFamily="Segoe UI Variable Display, Segoe UI, Microsoft YaHei UI">
@@ -22,9 +22,10 @@
         <converters:BoolToVisibilityConverter x:Key="BoolToVis"/>
         <converters:ReverseBoolConverter x:Key="RevBool"/>
         <converters:PageToVisibilityConverter x:Key="PageToVis"/>
+        <converters:BoolToColorConverter x:Key="BoolToColor"/>
 
-        <!-- WinUI 3 / Windows 11 Acrylic Mica 卡片样式 -->
-        <Style x:Key="UwpCard" TargetType="Border">
+        <!-- WinUI 3 风格 Acrylic/Mica 卡片 (CardControl) -->
+        <Style x:Key="WinUiCard" TargetType="Border">
             <Setter Property="Background" Value="#2B2B2B"/>
             <Setter Property="CornerRadius" Value="8"/>
             <Setter Property="BorderBrush" Value="#383838"/>
@@ -33,8 +34,8 @@
             <Setter Property="Margin" Value="0,0,0,12"/>
         </Style>
 
-        <!-- Windows 11 胶囊卡片 (可点击列表项) -->
-        <Style x:Key="UwpItemCard" TargetType="Border">
+        <!-- WinUI 3 风格列表项卡片 (Expander/ListView Item) -->
+        <Style x:Key="WinUiItemCard" TargetType="Border">
             <Setter Property="Background" Value="#2D2D2D"/>
             <Setter Property="CornerRadius" Value="8"/>
             <Setter Property="BorderBrush" Value="#3D3D3D"/>
@@ -43,15 +44,15 @@
             <Setter Property="Margin" Value="0,0,0,8"/>
         </Style>
 
-        <!-- Windows 11 Fluent 主题强调按钮 (Accent Button) -->
-        <Style x:Key="FluentAccentButton" TargetType="Button">
+        <!-- WinUI 3 强调色主按钮 (AccentButtonStyle) -->
+        <Style x:Key="WinUiAccentButton" TargetType="Button">
             <Setter Property="Background" Value="#0078D4"/>
             <Setter Property="Foreground" Value="#FFFFFF"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="Padding" Value="16,7"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="#2B88D8"/>
+            <Setter Property="BorderBrush" Value="#1A86D9"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
@@ -74,8 +75,8 @@
             </Setter>
         </Style>
 
-        <!-- Windows 11 幽灵次级按钮 (Standard Button) -->
-        <Style x:Key="FluentStandardButton" TargetType="Button">
+        <!-- WinUI 3 标准按钮 (DefaultButtonStyle) -->
+        <Style x:Key="WinUiStandardButton" TargetType="Button">
             <Setter Property="Background" Value="#383838"/>
             <Setter Property="Foreground" Value="#F3F3F3"/>
             <Setter Property="FontSize" Value="12"/>
@@ -103,17 +104,42 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- 扁平透明按钮 (SubtleButton) -->
+        <Style x:Key="WinUiSubtleButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#CCCCCC"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#33FFFFFF"/>
+                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Grid>
-        <!-- 主网格分层：页面内容 + 隐蔽高级设置抽屉面板 -->
+        <!-- 主布局区 -->
         <Grid Margin="24,20,24,20">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/> <!-- 统一 Windows 标题栏与导航状态 -->
-                <RowDefinition Height="*"/>    <!-- 页面核心交互区域 (单向两页切换) -->
+                <RowDefinition Height="Auto"/> <!-- WinUI 风格顶栏导航 -->
+                <RowDefinition Height="*"/>    <!-- 页面核心内容 -->
             </Grid.RowDefinitions>
 
-            <!-- 1. 顶栏 (UWP TitleBar & Breadcrumb) -->
+            <!-- 1. WinUI 顶栏 (NavigationView Header) -->
             <Grid Grid.Row="0" Margin="0,0,0,16">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -121,20 +147,20 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- 左侧：返回箭头 (仅在详情页显示) + App Logo 与当前状态 -->
+                <!-- 左侧返回箭头 + 标题 -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                    <!-- 返回发现页按钮 -->
-                    <Button Content="←" FontSize="14" FontWeight="Bold" Width="36" Height="36" Margin="0,0,12,0"
-                            Style="{StaticResource FluentStandardButton}" Command="{Binding BackToDiscoveryCommand}"
+                    <Button Content="←" FontSize="16" FontWeight="Bold" Width="38" Height="38" Margin="0,0,12,0"
+                            Style="{StaticResource WinUiStandardButton}" Command="{Binding BackToDiscoveryCommand}"
+                            ToolTip="返回设备发现页面"
                             Visibility="{Binding CurrentPage, Converter={StaticResource PageToVis}, ConverterParameter=DeviceDashboard}"/>
 
-                    <Border Width="34" Height="34" CornerRadius="6" Background="#2B2B2B" BorderBrush="#383838" BorderThickness="1" Margin="0,0,10,0" Padding="3">
+                    <Border Width="36" Height="36" CornerRadius="8" Background="#2B2B2B" BorderBrush="#383838" BorderThickness="1" Margin="0,0,12,0" Padding="4">
                         <Image Source="Resources/Images/app_logo.png" Stretch="Uniform"/>
                     </Border>
                     <StackPanel VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="{Binding DeviceName}" FontSize="16" FontWeight="SemiBold" Foreground="#FFFFFF"/>
-                            <!-- 胶囊状态小标 -->
+                            <TextBlock Text="{Binding DeviceName}" FontSize="17" FontWeight="SemiBold" Foreground="#FFFFFF"/>
+                            <!-- 胶囊状态 -->
                             <Border Background="#107C41" CornerRadius="4" Padding="6,2" Margin="10,0,0,0"
                                     Visibility="{Binding IsConnected, Converter={StaticResource BoolToVis}}">
                                 <TextBlock Text="已连接" FontSize="11" Foreground="White" FontWeight="SemiBold"/>
@@ -144,87 +170,96 @@
                                 <TextBlock Text="寻找设备中..." FontSize="11" Foreground="#CCCCCC"/>
                             </Border>
                         </StackPanel>
-                        <TextBlock Text="SIBYL MUSIC 电脑版耳机控制中枢 | Windows 10/11 原生 BLE 架构" FontSize="11" Foreground="#9E9E9E"/>
+                        <TextBlock Text="SIBYL MUSIC - 电脑版耳机控制中枢 (WinUI 3 风格)" FontSize="11" Foreground="#9E9E9E"/>
                     </StackPanel>
                 </StackPanel>
 
-                <!-- 右侧：隐蔽设置按钮 (小齿轮) 与连接态按钮 -->
+                <!-- 右侧操作区：高级设置齿轮 + 断开连接 -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                    <!-- 隐蔽设置齿轮 -->
-                    <Button Content="⚙️ 高级选项" Style="{StaticResource FluentStandardButton}" 
-                            Command="{Binding ToggleAdvancedSettingsCommand}" Margin="0,0,8,0"/>
+                    <Button Content="⚙️ 高级选项" Style="{StaticResource WinUiStandardButton}" 
+                            Command="{Binding ToggleAdvancedSettingsCommand}" Margin="0,0,8,0"
+                            ToolTip="打开硬件型号能力覆盖与底层通信调试面板"/>
 
-                    <Button Content="断开设备" Style="{StaticResource FluentStandardButton}" Command="{Binding DisconnectCommand}"
+                    <Button Content="断开设备" Style="{StaticResource WinUiStandardButton}" Command="{Binding DisconnectCommand}"
                             Visibility="{Binding IsConnected, Converter={StaticResource BoolToVis}}"/>
                 </StackPanel>
             </Grid>
 
-            <!-- 2. 页面 1：周边设备独立发现与自动扫描页 (DeviceDiscovery) -->
+            <!-- 2. 页面 1：周边设备独立发现与持续自动扫描页 (DeviceDiscovery) -->
             <Grid Grid.Row="1" Visibility="{Binding CurrentPage, Converter={StaticResource PageToVis}, ConverterParameter=DeviceDiscovery}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <!-- 自动扫描提示横幅 -->
-                <Border Grid.Row="0" Style="{StaticResource UwpCard}" Padding="16,14" Margin="0,0,0,16">
+                <!-- 自动扫描横幅 -->
+                <Border Grid.Row="0" Style="{StaticResource WinUiCard}" Padding="18,14" Margin="0,0,0,14">
                     <DockPanel>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="📡" FontSize="18" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="📡" FontSize="20" Margin="0,0,12,0" VerticalAlignment="Center"/>
                             <StackPanel>
-                                <TextBlock Text="正在持续自动搜索附近的 SIBYL 蓝牙耳机..." FontSize="14" FontWeight="SemiBold"/>
-                                <TextBlock Text="请确保耳机已开机并处于配对状态或已在 Windows 系统中配对，点击列表项即可一键建立连接" FontSize="12" Foreground="#9E9E9E"/>
+                                <TextBlock Text="正在自动扫描附近的蓝牙音频设备 (已开启 SIBYL 耳机智能判定)" FontSize="14" FontWeight="SemiBold"/>
+                                <TextBlock Text="开机佩戴耳机后将自动出现在列表中；官方认证设备将以绿色标记并优先排列，点击即可一键连接" FontSize="12" Foreground="#9E9E9E"/>
                             </StackPanel>
                         </StackPanel>
-                        <Button Content="重新扫描" Command="{Binding ScanCommand}" Style="{StaticResource FluentStandardButton}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        <Button Content="重新扫描" Command="{Binding ScanCommand}" Style="{StaticResource WinUiStandardButton}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                     </DockPanel>
                 </Border>
 
-                <!-- 设备卡片动态列表 -->
+                <!-- 动态设备列表 -->
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                     <StackPanel>
-                        <TextBlock Text="发现的耳机设备" FontSize="13" FontWeight="SemiBold" Foreground="#A6A6A6" Margin="4,0,0,8"/>
+                        <TextBlock Text="附近的耳机与蓝牙设备" FontSize="13" FontWeight="SemiBold" Foreground="#A6A6A6" Margin="4,0,0,8"/>
 
                         <!-- 空提示 -->
-                        <Border Style="{StaticResource UwpCard}" Padding="30" Margin="0,10,0,0"
+                        <Border Style="{StaticResource WinUiCard}" Padding="36" Margin="0,10,0,0"
                                 Visibility="{Binding DiscoveredDevices.Count, Converter={StaticResource BoolToVis}, ConverterParameter=Rev}">
                             <StackPanel HorizontalAlignment="Center">
-                                <TextBlock Text="🔍" FontSize="32" HorizontalAlignment="Center" Margin="0,0,0,10"/>
-                                <TextBlock Text="正在扫描周边设备..." FontSize="14" Foreground="#9E9E9E" HorizontalAlignment="Center"/>
+                                <TextBlock Text="🔍" FontSize="36" HorizontalAlignment="Center" Margin="0,0,0,12"/>
+                                <TextBlock Text="正在监听低功耗蓝牙广播..." FontSize="14" Foreground="#9E9E9E" HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Border>
 
-                        <!-- 设备项列表 -->
+                        <!-- 设备卡片项 (WinUI 3 风格) -->
                         <ItemsControl ItemsSource="{Binding DiscoveredDevices}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Style="{StaticResource UwpItemCard}">
+                                    <Border Style="{StaticResource WinUiItemCard}">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto"/>
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                                 <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
 
-                                            <!-- 耳机图标 -->
-                                            <Border Grid.Column="0" Width="40" Height="40" Background="#383838" CornerRadius="6" Margin="0,0,12,0">
-                                                <TextBlock Text="🎧" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            <!-- 标志头像 -->
+                                            <Border Grid.Column="0" Width="44" Height="44" Background="#383838" CornerRadius="8" Margin="0,0,14,0">
+                                                <TextBlock Text="🎧" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                             </Border>
 
-                                            <!-- 名称与 MAC -->
+                                            <!-- 名称与地址 -->
                                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" Foreground="#FFFFFF"/>
-                                                <TextBlock Text="{Binding Id, StringFormat='地址: {0}'}" FontSize="11" Foreground="#8C8C8C"/>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" Foreground="#FFFFFF"/>
+                                                    <!-- SIBYL 官方认证徽章 -->
+                                                    <Border Background="{Binding IsSibylVerified, Converter={StaticResource BoolToColor}, ConverterParameter=SibylBadge}" 
+                                                            CornerRadius="4" Padding="6,1" Margin="8,0,0,0" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding IsSibylVerified, Converter={StaticResource BoolToVis}, ConverterParameter='SIBYL 官方认证'}" 
+                                                                   FontSize="10" Foreground="White" FontWeight="SemiBold"/>
+                                                    </Border>
+                                                </StackPanel>
+                                                <TextBlock Text="{Binding Id, StringFormat='MAC: {0}'}" FontSize="11" Foreground="#8C8C8C"/>
                                             </StackPanel>
 
                                             <!-- 信号指示 -->
-                                            <Border Grid.Column="2" Background="#242424" CornerRadius="4" Padding="8,4" VerticalAlignment="Center" Margin="0,0,14,0">
-                                                <TextBlock Text="{Binding SignalIcon}" FontSize="12" Foreground="#38BDF8"/>
+                                            <Border Grid.Column="2" Background="#222222" CornerRadius="4" Padding="8,4" VerticalAlignment="Center" Margin="0,0,14,0">
+                                                <TextBlock Text="{Binding SignalIcon}" FontSize="11" Foreground="#38BDF8"/>
                                             </Border>
 
                                             <!-- 连接按钮 -->
-                                            <Button Grid.Column="3" Content="连接" Style="{StaticResource FluentAccentButton}" 
+                                            <Button Grid.Column="3" Content="连接设备" Style="{StaticResource WinUiAccentButton}" 
                                                     Command="{Binding DataContext.ConnectCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                     CommandParameter="{Binding}" VerticalAlignment="Center" Padding="18,6"/>
                                         </Grid>
@@ -236,22 +271,22 @@
                 </ScrollViewer>
             </Grid>
 
-            <!-- 3. 页面 2：耳机深度控制中枢 (DeviceDashboard) -->
+            <!-- 3. 页面 2：耳机深度控制中枢 (DeviceDashboard - WinUI 3 卡片层级) -->
             <Grid Grid.Row="1" Visibility="{Binding CurrentPage, Converter={StaticResource PageToVis}, ConverterParameter=DeviceDashboard}">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="340"/> <!-- 左栏：造型与电量 + ANC + 快速切换 -->
+                    <ColumnDefinition Width="340"/> <!-- 左栏：造型电量 + 降噪等级胶囊 + 快捷工具 -->
                     <ColumnDefinition Width="16"/>
-                    <ColumnDefinition Width="*"/>   <!-- 右栏：10段专业EQ + 白噪音 + 手势映射 -->
+                    <ColumnDefinition Width="*"/>   <!-- 右栏：10段专业EQ + 疗愈白噪音 + 触控手势 -->
                 </Grid.ColumnDefinitions>
 
                 <!-- 左栏 -->
                 <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
                     <StackPanel>
                         <!-- 卡片 1: 真实矢量外观与电量环 -->
-                        <Border Style="{StaticResource UwpCard}">
+                        <Border Style="{StaticResource WinUiCard}">
                             <StackPanel>
                                 <DockPanel Margin="0,0,0,12">
-                                    <TextBlock Text="设备状态与电量" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    <TextBlock Text="耳机状态与电量" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                     <TextBlock Text="{Binding CurrentProfile.ChipDescription}" FontSize="11" Foreground="#38BDF8" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                                 </DockPanel>
 
@@ -263,10 +298,11 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- 卡片 2: ANC 降噪胶囊控制 (UWP 胶囊式排布) -->
-                        <Border Style="{StaticResource UwpCard}">
+                        <!-- 卡片 2: ANC 降噪模式 + 两级降噪等级调节 -->
+                        <Border Style="{StaticResource WinUiCard}">
                             <StackPanel>
                                 <TextBlock Text="降噪控制 (ANC)" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,12"/>
+                                <!-- 3 个模式大胶囊 -->
                                 <Grid Margin="0,0,0,10">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
@@ -274,33 +310,33 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <Button Grid.Column="0" Content="🛡️ 降噪" Command="{Binding SetAncCommand}" CommandParameter="1" 
-                                            Style="{StaticResource FluentStandardButton}" Margin="0,0,3,0"/>
+                                            Style="{StaticResource WinUiStandardButton}" Margin="0,0,3,0"/>
                                     <Button Grid.Column="1" Content="🍃 普通" Command="{Binding SetAncCommand}" CommandParameter="2" 
-                                            Style="{StaticResource FluentStandardButton}" Margin="3,0,3,0"/>
+                                            Style="{StaticResource WinUiStandardButton}" Margin="3,0,3,0"/>
                                     <Button Grid.Column="2" Content="🔊 通透" Command="{Binding SetAncCommand}" CommandParameter="3" 
-                                            Style="{StaticResource FluentStandardButton}" Margin="3,0,0,0"/>
+                                            Style="{StaticResource WinUiStandardButton}" Margin="3,0,0,0"/>
                                 </Grid>
 
-                                <!-- 两级降噪等级调节 (舒适降噪 / 深度降噪) -->
+                                <!-- 两级降噪等级调节 (舒适降噪 50% / 深度降噪 100%) -->
                                 <Border Background="#242424" CornerRadius="6" Padding="10,8" Margin="0,2,0,8"
                                         Visibility="{Binding CurrentProfile.SupportsAncDepth, Converter={StaticResource BoolToVis}}">
                                     <DockPanel>
                                         <TextBlock Text="降噪等级:" FontSize="12" Foreground="#CCCCCC" VerticalAlignment="Center"/>
                                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                                             <Button Content="舒适降噪" Command="{Binding SetAncDepthCommand}" CommandParameter="50" 
-                                                    Style="{StaticResource FluentStandardButton}" Padding="10,4" Margin="0,0,6,0"/>
+                                                    Style="{StaticResource WinUiStandardButton}" Padding="10,4" Margin="0,0,6,0"/>
                                             <Button Content="深度降噪" Command="{Binding SetAncDepthCommand}" CommandParameter="100" 
-                                                    Style="{StaticResource FluentAccentButton}" Padding="10,4"/>
+                                                    Style="{StaticResource WinUiAccentButton}" Padding="10,4"/>
                                         </StackPanel>
                                     </DockPanel>
                                 </Border>
 
-                                <TextBlock Text="当前状态: 纯 BLE 隔离传输，不占 A2DP 音乐信道" FontSize="11" Foreground="#8C8C8C"/>
+                                <TextBlock Text="传输状态: WinRT BLE 隔离通道，绝对不干扰 A2DP 音乐" FontSize="11" Foreground="#8C8C8C"/>
                             </StackPanel>
                         </Border>
 
                         <!-- 卡片 3: 常用快捷功能开关 -->
-                        <Border Style="{StaticResource UwpCard}">
+                        <Border Style="{StaticResource WinUiCard}">
                             <StackPanel>
                                 <TextBlock Text="功能快捷开关" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,12"/>
 
@@ -322,7 +358,7 @@
                                 <DockPanel Margin="0,0,0,12">
                                     <TextBlock Text="🔔 寻找耳机" VerticalAlignment="Center"/>
                                     <Button Content="播放定位音" Command="{Binding ToggleFindEarphoneCommand}" 
-                                            Style="{StaticResource FluentStandardButton}" HorizontalAlignment="Right" Padding="10,4"/>
+                                            Style="{StaticResource WinUiStandardButton}" HorizontalAlignment="Right" Padding="10,4"/>
                                 </DockPanel>
 
                                 <!-- 定时关机 -->
@@ -338,22 +374,22 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- 卡片 4: 自带 3 款声学疗愈音频 -->
-                        <Border Style="{StaticResource UwpCard}">
+                        <!-- 卡片 4: 自带 3 款声学疗愈白噪音音频 -->
+                        <Border Style="{StaticResource WinUiCard}">
                             <StackPanel>
                                 <DockPanel Margin="0,0,0,10">
                                     <TextBlock Text="🎵 自带疗愈白噪音" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                    <Button Content="⏹️ 停止" Command="{Binding StopSoundCommand}" Style="{StaticResource FluentStandardButton}" 
+                                    <Button Content="⏹️ 停止" Command="{Binding StopSoundCommand}" Style="{StaticResource WinUiStandardButton}" 
                                             HorizontalAlignment="Right" Padding="8,3"/>
                                 </DockPanel>
 
                                 <UniformGrid Columns="3" Margin="0,0,0,8">
                                     <Button Content="🌸 粉红噪音" Command="{Binding PlaySoundCommand}" CommandParameter="{Binding BuiltInSounds[0]}" 
-                                            Style="{StaticResource FluentStandardButton}" Margin="0,0,2,0"/>
+                                            Style="{StaticResource WinUiStandardButton}" Margin="0,0,2,0"/>
                                     <Button Content="🐦 森林鸟鸣" Command="{Binding PlaySoundCommand}" CommandParameter="{Binding BuiltInSounds[1]}" 
-                                            Style="{StaticResource FluentStandardButton}" Margin="2,0,2,0"/>
+                                            Style="{StaticResource WinUiStandardButton}" Margin="2,0,2,0"/>
                                     <Button Content="🌧️ 淅沥细雨" Command="{Binding PlaySoundCommand}" CommandParameter="{Binding BuiltInSounds[2]}" 
-                                            Style="{StaticResource FluentStandardButton}" Margin="2,0,0,0"/>
+                                            Style="{StaticResource WinUiStandardButton}" Margin="2,0,0,0"/>
                                 </UniformGrid>
 
                                 <DockPanel>
@@ -369,7 +405,7 @@
                 <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
                     <StackPanel>
                         <!-- 卡片 5: 10 段专业音乐均衡器 (EQ) -->
-                        <Border Style="{StaticResource UwpCard}">
+                        <Border Style="{StaticResource WinUiCard}">
                             <StackPanel>
                                 <DockPanel Margin="0,0,0,14">
                                     <StackPanel VerticalAlignment="Center">
@@ -446,7 +482,7 @@
                             </Grid.ColumnDefinitions>
 
                             <!-- 左手势 -->
-                            <Border Grid.Column="0" Style="{StaticResource UwpCard}">
+                            <Border Grid.Column="0" Style="{StaticResource WinUiCard}">
                                 <StackPanel>
                                     <TextBlock Text="按键触控自定义" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10"/>
                                     <Grid Margin="0,0,0,6">
@@ -475,12 +511,12 @@
                                             <ComboBoxItem Content="音量+"/>
                                         </ComboBox>
                                     </Grid>
-                                    <Button Content="保存手势映射" Command="{Binding SaveKeySettingsCommand}" Style="{StaticResource FluentStandardButton}" Margin="0,6,0,0"/>
+                                    <Button Content="保存手势映射" Command="{Binding SaveKeySettingsCommand}" Style="{StaticResource WinUiStandardButton}" Margin="0,6,0,0"/>
                                 </StackPanel>
                             </Border>
 
                             <!-- 右灯效 -->
-                            <Border Grid.Column="2" Style="{StaticResource UwpCard}">
+                            <Border Grid.Column="2" Style="{StaticResource WinUiCard}">
                                 <StackPanel>
                                     <TextBlock Text="RGB 炫彩灯效" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10"/>
                                     <UniformGrid Columns="3" Margin="0,0,0,10">
@@ -504,7 +540,7 @@
             </Grid>
         </Grid>
 
-        <!-- 4. 隐蔽高级设置抽屉 (点击齿轮从右侧滑出，收纳兼容模式和模拟开关) -->
+        <!-- 4. 隐蔽高级设置抽屉 (WinUI 3 侧边滑出抽屉) -->
         <Border Width="340" HorizontalAlignment="Right" Background="#252525" BorderBrush="#3D3D3D" BorderThickness="1,0,0,0"
                 Visibility="{Binding IsAdvancedSettingsOpen, Converter={StaticResource BoolToVis}}">
             <Grid Margin="20">
@@ -517,14 +553,14 @@
                 <!-- 抽屉顶栏 -->
                 <DockPanel Grid.Row="0" Margin="0,0,0,18">
                     <TextBlock Text="高级设置与协议选项" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                    <Button Content="✕" Style="{StaticResource FluentStandardButton}" Command="{Binding ToggleAdvancedSettingsCommand}"
+                    <Button Content="✕" Style="{StaticResource WinUiStandardButton}" Command="{Binding ToggleAdvancedSettingsCommand}"
                             Padding="8,2" HorizontalAlignment="Right"/>
                 </DockPanel>
 
                 <!-- 抽屉设置项 -->
                 <StackPanel Grid.Row="1">
                     <!-- 隐蔽手动型号兼容修改 -->
-                    <Border Style="{StaticResource UwpCard}" Margin="0,0,0,14">
+                    <Border Style="{StaticResource WinUiCard}" Margin="0,0,0,14">
                         <StackPanel>
                             <TextBlock Text="硬件型号能力映射 (兼容覆盖)" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,4"/>
                             <TextBlock Text="系统默认根据蓝牙广播自动识别，如识别不准可手动覆盖能力：" FontSize="11" Foreground="#8C8C8C" Margin="0,0,0,10"/>
@@ -534,27 +570,26 @@
                     </Border>
 
                     <!-- 蓝牙物理传输内核切换 -->
-                    <Border Style="{StaticResource UwpCard}" Margin="0,0,0,14">
+                    <Border Style="{StaticResource WinUiCard}" Margin="0,0,0,14">
                         <StackPanel>
                             <TextBlock Text="蓝牙通信驱动内核" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,4"/>
                             <TextBlock Text="当前处于：" FontSize="11" Foreground="#8C8C8C" Margin="0,0,0,8"/>
                             <TextBlock Text="{Binding IsMockMode, Converter={StaticResource BoolToVis}, ConverterParameter='虚拟设备模拟器模式'}" FontWeight="SemiBold" Foreground="#38BDF8"/>
                             <Button Content="切换为真实 Windows WinRT BLE / 模拟模式" Command="{Binding SwitchTransportCommand}" 
-                                    Style="{StaticResource FluentStandardButton}" Margin="0,8,0,0"/>
+                                    Style="{StaticResource WinUiStandardButton}" Margin="0,8,0,0"/>
                         </StackPanel>
                     </Border>
 
                     <!-- 恢复与重置 -->
-                    <Border Style="{StaticResource UwpCard}">
+                    <Border Style="{StaticResource WinUiCard}">
                         <StackPanel>
                             <TextBlock Text="耳机固件重置" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                            <Button Content="恢复默认设置" Command="{Binding ResetDefaultsCommand}" Style="{StaticResource FluentStandardButton}" Margin="0,0,0,8"/>
-                            <Button Content="恢复出厂设置" Command="{Binding FactoryResetCommand}" Style="{StaticResource FluentStandardButton}"/>
+                            <Button Content="恢复默认设置" Command="{Binding ResetDefaultsCommand}" Style="{StaticResource WinUiStandardButton}" Margin="0,0,0,8"/>
+                            <Button Content="恢复出厂设置" Command="{Binding FactoryResetCommand}" Style="{StaticResource WinUiStandardButton}"/>
                         </StackPanel>
                     </Border>
                 </StackPanel>
 
-                <!-- 抽屉底栏：简要日志 -->
                 <TextBlock Grid.Row="2" Text="提示: 控制台窗口实时输出底层通信帧日志" FontSize="11" Foreground="#6E6E6E" HorizontalAlignment="Center"/>
             </Grid>
         </Border>

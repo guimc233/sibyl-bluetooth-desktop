@@ -26,12 +26,13 @@ public class MockBleTransport : IBleTransport
 
     private static readonly List<DiscoveredBleDevice> _mockDevices =
     [
-        new("SIBYL-B1-PRO", "SIBYL B1 Pro (Dual-Mode)", -48),
-        new("SIBYL-S1-ANC", "SIBYL S1 ANC (旗舰真无线)", -54),
-        new("SIBYL-B6-RGB", "SIBYL B6 (RGB电竞)", -62),
-        new("SIBYL-S10-TWS", "SIBYL S10 (半入耳音乐)", -70),
-        new("SIBYL-S11-LDAC", "SIBYL S11 LDAC (Hi-Res)", -58),
-        new("SIBYL-Y1-LOWLATENCY", "SIBYL Y1 (低延迟游戏版)", -66)
+        new("3E21-0001", "SIBYL S1 ANC (旗舰真无线)", -52) { IsSibylVerified = true, ChipName = "杰理 AC6973D8" },
+        new("3E21-0002", "SIBYL B1 Pro (Dual-Mode)", -48) { IsSibylVerified = true, ChipName = "杰理 AC6973D8" },
+        new("3E21-0006", "SIBYL B6 (RGB电竞耳机)", -64) { IsSibylVerified = true, ChipName = "杰理 AC697N" },
+        new("3E22-0010", "SIBYL S10 (半入耳音乐)", -70) { IsSibylVerified = true, ChipName = "杰理 AC6973D8" },
+        new("3E22-0011", "SIBYL S11 LDAC (Hi-Res)", -58) { IsSibylVerified = true, ChipName = "瑞昱 RTL8773" },
+        new("3D11-0001", "SIBYL Y1 (低延迟游戏版)", -66) { IsSibylVerified = true, ChipName = "炬力 ATS3015" },
+        new("GENERIC-01", "未识别的普通蓝牙设备", -88) { IsSibylVerified = false, ChipName = "未知" }
     ];
 
     public Task StartContinuousScanAsync()
@@ -41,7 +42,7 @@ public class MockBleTransport : IBleTransport
         _scanCts = new CancellationTokenSource();
         var token = _scanCts.Token;
 
-        OnLog?.Invoke("[MOCK] 开启持续后台蓝牙扫描...");
+        OnLog?.Invoke("[MOCK] 开启持续后台蓝牙扫描 (SIBYL 设备优先判定)...");
 
         _ = Task.Run(async () =>
         {
@@ -52,11 +53,10 @@ public class MockBleTransport : IBleTransport
                 {
                     var dev = _mockDevices[index++];
                     OnDeviceFound?.Invoke(dev);
-                    OnLog?.Invoke($"[MOCK-SCAN] 发现设备: {dev.Name} (RSSI: {dev.Rssi} dBm)");
+                    OnLog?.Invoke($"[MOCK-SCAN] 发现蓝牙设备: {dev.Name} (SIBYL认证: {dev.IsSibylVerified}, RSSI: {dev.Rssi} dBm)");
                 }
                 else
                 {
-                    // 模拟微弱信号波动
                     var rand = new Random();
                     var dev = _mockDevices[rand.Next(_mockDevices.Count)];
                     var updated = dev with { Rssi = -45 - rand.Next(35), LastSeen = DateTime.UtcNow };
@@ -82,7 +82,7 @@ public class MockBleTransport : IBleTransport
     public async Task<IReadOnlyList<DiscoveredBleDevice>> ScanDevicesAsync(int timeoutMs = 4000)
     {
         OnLog?.Invoke("[MOCK] 单次扫描低功耗蓝牙设备...");
-        await Task.Delay(600);
+        await Task.Delay(500);
         foreach (var dev in _mockDevices)
         {
             OnDeviceFound?.Invoke(dev);
@@ -94,14 +94,14 @@ public class MockBleTransport : IBleTransport
     {
         await StopContinuousScanAsync();
         OnLog?.Invoke($"[MOCK] 正在连接设备 {deviceId}...");
-        await Task.Delay(400);
+        await Task.Delay(300);
 
         IsConnected = true;
         ConnectedDeviceId = deviceId;
         var matched = _mockDevices.FirstOrDefault(d => d.Id == deviceId);
         ConnectedDeviceName = matched?.Name ?? "SIBYL S1 ANC";
         OnConnectionStateChanged?.Invoke(true);
-        OnLog?.Invoke($"[MOCK] 连接成功! GATT 通信就绪，与 A2DP 物理隔离");
+        OnLog?.Invoke($"[MOCK] 连接成功! GATT 通信通道就绪，A2DP 音频纯净隔离");
 
         SendMockStatusReport();
         return true;
@@ -115,7 +115,7 @@ public class MockBleTransport : IBleTransport
             ConnectedDeviceId = null;
             ConnectedDeviceName = null;
             OnConnectionStateChanged?.Invoke(false);
-            OnLog?.Invoke("[MOCK] 设备已安全断开");
+            OnLog?.Invoke("[MOCK] 设备已断开");
         }
         return Task.CompletedTask;
     }
@@ -152,18 +152,14 @@ public class MockBleTransport : IBleTransport
     private void SendMockStatusReport()
     {
         if (!IsConnected) return;
-
-        // 1. 发送电量包 (SibylCommandId.Battery)
         byte[] batPayload = [_leftBattery, _rightBattery, _caseBattery];
         var batPacket = PacketBuilder.BuildPacket(SibylCommandId.Battery, batPayload);
         OnDataReceived?.Invoke(batPacket);
 
-        // 2. 发送 ANC 状态包 (SibylCommandId.AncMode)
         byte[] ancPayload = [_ancMode, _ancDepth];
         var ancPacket = PacketBuilder.BuildPacket(SibylCommandId.AncMode, ancPayload);
         OnDataReceived?.Invoke(ancPacket);
 
-        // 3. 发送游戏模式包 (SibylCommandId.GameMode)
         byte[] gamePayload = [(byte)(_gameMode ? 1 : 0)];
         var gamePacket = PacketBuilder.BuildPacket(SibylCommandId.GameMode, gamePayload);
         OnDataReceived?.Invoke(gamePacket);

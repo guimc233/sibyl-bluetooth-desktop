@@ -33,7 +33,12 @@ public class WinRtBleTransport : IBleTransport
 #if WINDOWS
         try
         {
-            if (_continuousWatcher != null) return Task.CompletedTask;
+            if (_continuousWatcher != null)
+            {
+                if (_continuousWatcher.Status == BluetoothLEAdvertisementWatcherStatus.Started)
+                    return Task.CompletedTask;
+                try { _continuousWatcher.Stop(); } catch { }
+            }
 
             OnLog?.Invoke("[WinRT-BLE] 启动 Windows 10/11 连续蓝牙广播监听...");
             _continuousWatcher = new BluetoothLEAdvertisementWatcher
@@ -44,10 +49,37 @@ public class WinRtBleTransport : IBleTransport
             _continuousWatcher.Received += (sender, args) =>
             {
                 string devName = args.Advertisement.LocalName;
-                if (string.IsNullOrWhiteSpace(devName)) return;
-
                 string id = args.BluetoothAddress.ToString("X");
-                var discovered = new DiscoveredBleDevice(id, devName, args.RawSignalStrengthInDBm);
+
+                // 收集广播的 Service UUIDs
+                var serviceUuids = args.Advertisement.ServiceUuids.ToList();
+
+                // 收集 Manufacturer Data
+                var manData = new Dictionary<ushort, byte[]>();
+                foreach (var md in args.Advertisement.ManufacturerData)
+                {
+                    using var reader = DataReader.FromBuffer(md.Data);
+                    byte[] bytes = new byte[md.Data.Length];
+                    reader.ReadBytes(bytes);
+                    manData[md.CompanyId] = bytes;
+                }
+
+                // 采用官方 APK 精确过滤算法：判断是否为 SIBYL 耳机
+                bool isSibyl = SibylDeviceMatcher.IsSibylEarbuds(devName, serviceUuids, manData);
+
+                // 如果名称为空且不是 SIBYL 广播特征，则忽略无用 Beacon
+                if (string.IsNullOrWhiteSpace(devName) && !isSibyl) return;
+
+                string displayName = string.IsNullOrWhiteSpace(devName)
+                    ? (isSibyl ? "SIBYL 无线耳机 (待命名)" : $"未知蓝牙设备 [{id}]")
+                    : devName;
+
+                var discovered = new DiscoveredBleDevice(id, displayName, args.RawSignalStrengthInDBm)
+                {
+                    IsSibylVerified = isSibyl,
+                    LastSeen = DateTime.UtcNow
+                };
+
                 OnDeviceFound?.Invoke(discovered);
             };
 
@@ -93,10 +125,17 @@ public class WinRtBleTransport : IBleTransport
         watcher.Received += (sender, args) =>
         {
             string devName = args.Advertisement.LocalName;
-            if (string.IsNullOrWhiteSpace(devName)) return;
-
             string id = args.BluetoothAddress.ToString("X");
-            var item = new DiscoveredBleDevice(id, devName, args.RawSignalStrengthInDBm);
+            var serviceUuids = args.Advertisement.ServiceUuids.ToList();
+            bool isSibyl = SibylDeviceMatcher.IsSibylEarbuds(devName, serviceUuids, null);
+
+            if (string.IsNullOrWhiteSpace(devName) && !isSibyl) return;
+
+            string displayName = string.IsNullOrWhiteSpace(devName) ? $"SIBYL 耳机 [{id}]" : devName;
+            var item = new DiscoveredBleDevice(id, displayName, args.RawSignalStrengthInDBm)
+            {
+                IsSibylVerified = isSibyl
+            };
             discovered[id] = item;
             OnDeviceFound?.Invoke(item);
         };
@@ -122,7 +161,7 @@ public class WinRtBleTransport : IBleTransport
 
             if (_bluetoothLeDevice == null)
             {
-                OnLog?.Invoke("[WinRT-BLE-ERR] 无法实例化 BluetoothLEDevice");
+                OnLog?.Invoke("[WinRT-BLE-ERR] 无法实例化 BluetoothLEDevice，请确认设备在有效范围内且未被其他应用独占");
                 return false;
             }
 
@@ -131,7 +170,7 @@ public class WinRtBleTransport : IBleTransport
                 bool connected = dev.ConnectionStatus == BluetoothConnectionStatus.Connected;
                 IsConnected = connected;
                 OnConnectionStateChanged?.Invoke(connected);
-                OnLog?.Invoke($"[WinRT-BLE] 连接状态变更为: {dev.ConnectionStatus}");
+                OnLog?.Invoke($"[WinRT-BLE] 蓝牙底层连接状态变更为: {dev.ConnectionStatus}");
             };
 
             var gattServicesResult = await _bluetoothLeDevice.GetGattServicesAsync(BluetoothCacheMode.Uncached);

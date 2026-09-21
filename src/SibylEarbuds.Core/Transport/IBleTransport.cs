@@ -3,6 +3,8 @@ namespace SibylEarbuds.Core.Transport;
 public record DiscoveredBleDevice(string Id, string Name, int Rssi)
 {
     public DateTime LastSeen { get; init; } = DateTime.UtcNow;
+    public bool IsSibylVerified { get; init; } = true;
+    public string? ChipName { get; init; }
 
     public string SignalLevel => Rssi switch
     {
@@ -14,10 +16,10 @@ public record DiscoveredBleDevice(string Id, string Name, int Rssi)
 
     public string SignalIcon => Rssi switch
     {
-        >= -55 => "📶 强",
-        >= -70 => "📶 中",
-        >= -85 => "📶 弱",
-        _ => "📶 极弱"
+        >= -55 => "●●●● 极佳",
+        >= -70 => "●●●○ 良好",
+        >= -85 => "●●○○ 一般",
+        _ => "●○○○ 较弱"
     };
 }
 
