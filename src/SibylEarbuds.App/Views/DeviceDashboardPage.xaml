@@ -106,23 +106,63 @@
                         </StackPanel>
                     </Border>
 
+                    <!-- ANC Card: 纯净单模直切，非降噪模式绝不下发深度等级，杜绝误跳深度降噪 -->
                     <Border Style="{StaticResource AppCardStyle}" Visibility="{x:Bind Vm.CurrentProfile.SupportsAnc, Mode=OneWay}">
                         <StackPanel Spacing="12">
                             <TextBlock Text="降噪控制 (ANC)" Style="{StaticResource AppSectionHeaderStyle}" Margin="0" />
 
-                            <RadioButtons SelectedIndex="{x:Bind Vm.AncModeIndex, Mode=TwoWay}" MaxColumns="3">
-                                <RadioButton Content="降噪" />
-                                <RadioButton Content="普通" />
-                                <RadioButton Content="通透" />
-                            </RadioButtons>
+                            <Grid ColumnSpacing="6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Button
+                                    Grid.Column="0"
+                                    Content="🛡️ 降噪"
+                                    HorizontalAlignment="Stretch"
+                                    Style="{StaticResource AppCompactButtonStyle}"
+                                    Command="{x:Bind Vm.SetAncModeCommand}"
+                                    CommandParameter="1" />
+                                <Button
+                                    Grid.Column="1"
+                                    Content="🍃 普通"
+                                    HorizontalAlignment="Stretch"
+                                    Style="{StaticResource AppCompactButtonStyle}"
+                                    Command="{x:Bind Vm.SetAncModeCommand}"
+                                    CommandParameter="2" />
+                                <Button
+                                    Grid.Column="2"
+                                    Content="🔊 通透"
+                                    HorizontalAlignment="Stretch"
+                                    Style="{StaticResource AppCompactButtonStyle}"
+                                    Command="{x:Bind Vm.SetAncModeCommand}"
+                                    CommandParameter="3" />
+                            </Grid>
 
                             <Border Style="{StaticResource AppInsetCardStyle}" Visibility="{x:Bind Vm.SupportsAncDepthNow, Mode=OneWay}">
                                 <StackPanel Spacing="8">
                                     <TextBlock Text="降噪等级" Style="{StaticResource BodyStrongTextBlockStyle}" />
-                                    <RadioButtons SelectedIndex="{x:Bind Vm.AncDepthIndex, Mode=TwoWay}" MaxColumns="2">
-                                        <RadioButton Content="舒适降噪 (50%)" />
-                                        <RadioButton Content="深度降噪 (100%)" />
-                                    </RadioButtons>
+                                    <Grid ColumnSpacing="6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Button
+                                            Grid.Column="0"
+                                            Content="舒适降噪 (50%)"
+                                            HorizontalAlignment="Stretch"
+                                            Style="{StaticResource AppCompactButtonStyle}"
+                                            Command="{x:Bind Vm.SetAncDepthCommand}"
+                                            CommandParameter="1" />
+                                        <Button
+                                            Grid.Column="1"
+                                            Content="深度降噪 (100%)"
+                                            HorizontalAlignment="Stretch"
+                                            Style="{StaticResource AppCompactButtonStyle}"
+                                            Command="{x:Bind Vm.SetAncDepthCommand}"
+                                            CommandParameter="2" />
+                                    </Grid>
                                 </StackPanel>
                             </Border>
 
@@ -234,23 +274,29 @@
             <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
                 <StackPanel Spacing="12">
 
+                    <!-- EQ Card: 改回手动保存提交，滑块与文字垂直居中严格对齐 -->
                     <Border Style="{StaticResource AppCardStyle}" Visibility="{x:Bind Vm.CurrentProfile.SupportsEq, Mode=OneWay}">
                         <StackPanel Spacing="12">
                             <Grid>
                                 <StackPanel>
                                     <TextBlock Text="10 段专业音乐均衡器" Style="{StaticResource BodyStrongTextBlockStyle}" />
-                                    <TextBlock Text="31Hz - 16kHz | -8dB ~ +8dB | 80ms 防抖限流" Style="{StaticResource AppCaptionStyle}" />
+                                    <TextBlock Text="31Hz - 16kHz | -8dB ~ +8dB | 手动保存提交" Style="{StaticResource AppCaptionStyle}" />
                                 </StackPanel>
-                                <ComboBox
-                                    HorizontalAlignment="Right"
-                                    VerticalAlignment="Center"
-                                    Width="170"
-                                    DisplayMemberPath="Name"
-                                    ItemsSource="{x:Bind Vm.EqPresets, Mode=OneWay}"
-                                    SelectedItem="{x:Bind Vm.SelectedEqPreset, Mode=TwoWay}" />
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                                    <ComboBox
+                                        VerticalAlignment="Center"
+                                        Width="150"
+                                        DisplayMemberPath="Name"
+                                        ItemsSource="{x:Bind Vm.EqPresets, Mode=OneWay}"
+                                        SelectedItem="{x:Bind Vm.SelectedEqPreset, Mode=TwoWay}" />
+                                    <Button
+                                        Content="保存并下发 EQ"
+                                        Style="{StaticResource AppAccentButtonStyle}"
+                                        Command="{x:Bind Vm.ApplyEqCommand}" />
+                                </StackPanel>
                             </Grid>
 
-                            <Grid ColumnSpacing="4" Height="200">
+                            <Grid ColumnSpacing="6" Height="200">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
@@ -258,56 +304,106 @@
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
 
-                                <StackPanel Grid.Column="0" Spacing="4">
-                                    <TextBlock Text="{x:Bind conv:DisplayHelper.SignedDb(Vm.EqBand0), Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
-                                    <Slider Orientation="Vertical" Height="140" Minimum="-8" Maximum="8" StepFrequency="1" SnapsTo="StepValues" Value="{x:Bind Vm.EqBand0, Mode=TwoWay}" />
-                                    <TextBlock Text="31" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
-                                </StackPanel>
-                                <StackPanel Grid.Column="1" Spacing="4">
-                                    <TextBlock Text="{x:Bind conv:DisplayHelper.SignedDb(Vm.EqBand1), Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
-                                    <Slider Orientation="Vertical" Height="140" Minimum="-8" Maximum="8" StepFrequency="1" SnapsTo="StepValues" Value="{x:Bind Vm.EqBand1, Mode=TwoWay}" />
-                                    <TextBlock Text="62" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
-                                </StackPanel>
-                                <StackPanel Grid.Column="2" Spacing="4">
-                                    <TextBlock Text="{x:Bind conv:DisplayHelper.SignedDb(Vm.EqBand2), Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
-                                    <Slider Orientation="Vertical" Height="140" Minimum="-8" Maximum="8" StepFrequency="1" SnapsTo="StepValues" Value="{x:Bind Vm.EqBand2, Mode=TwoWay}" />
-                                    <TextBlock Text="125" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
-                                </StackPanel>
-                                <StackPanel Grid.Column="3" Spacing="4">
-                                    <TextBlock Text="{x:Bind conv:DisplayHelper.SignedDb(Vm.EqBand3), Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
-                                    <Slider Orientation="Vertical" Height="140" Minimum="-8" Maximum="8" StepFrequency="1" SnapsTo="StepValues" Value="{x:Bind Vm.EqBand3, Mode=TwoWay}" />
-                                    <TextBlock Text="250" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
-                                </StackPanel>
-                                <StackPanel Grid.Column="4" Spacing="4">
-                                    <TextBlock Text="{x:Bind conv:DisplayHelper.SignedDb(Vm.EqBand4), Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
-                                    <Slider Orientation="Vertical" Height="140" Minimum="-8" Maximum="8" StepFrequency="1" SnapsTo="StepValues" Value="{x:Bind Vm.EqBand4, Mode=TwoWay}" />
-                                    <TextBlock Text="500" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
-                                </StackPanel>
-                                <StackPanel Grid.Column="5" Spacing="4">
-                                    <TextBlock Text="{x:Bind conv:DisplayHelper.SignedDb(Vm.EqBand5), Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
-                                    <Slider Orientation="Vertical" Height="140" Minimum="-8" Maximum="8" StepFrequency="1" SnapsTo="StepValues" Value="{x:Bind Vm.EqBand5, Mode=TwoWay}" />
-                                    <TextBlock Text="1k" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
-                                </StackPanel>
-                                <StackPanel Grid.Column="6" Spacing="4">
-                                    <TextBlock Text="{x:Bind conv:DisplayHelper.SignedDb(Vm.EqBand6), Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
-                                    <Slider Orientation="Vertical" Height="140" Minimum="-8" Maximum="8" StepFrequency="1" SnapsTo="StepValues" Value="{x:Bind Vm.EqBand6, Mode=TwoWay}" />
-                                    <TextBlock Text="2k" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
-                                </StackPanel>
-                                <StackPanel Grid.Column="7" Spacing="4">
-                                    <TextBlock Text="{x:Bind conv:DisplayHelper.SignedDb(Vm.EqBand7), Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
-                                    <Slider Orientation="Vertical" Height="140" Minimum="-8" Maximum="8" StepFrequency="1" SnapsTo="StepValues" Value="{x:Bind Vm.EqBand7, Mode=TwoWay}" />
-                                    <TextBlock Text="4k" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
-                                </StackPanel>
-                                <StackPanel Grid.Column="8" Spacing="4">
-                                    <TextBlock Text="{x:Bind conv:DisplayHelper.SignedDb(Vm.EqBand8), Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
-                                    <Slider Orientation="Vertical" Height="140" Minimum="-8" Maximum="8" StepFrequency="1" SnapsTo="StepValues" Value="{x:Bind Vm.EqBand8, Mode=TwoWay}" />
-                                    <TextBlock Text="8k" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
-                                </StackPanel>
-                                <StackPanel Grid.Column="9" Spacing="4">
-                                    <TextBlock Text="{x:Bind conv:DisplayHelper.SignedDb(Vm.EqBand9), Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
-                                    <Slider Orientation="Vertical" Height="140" Minimum="-8" Maximum="8" StepFrequency="1" SnapsTo="StepValues" Value="{x:Bind Vm.EqBand9, Mode=TwoWay}" />
-                                    <TextBlock Text="16k" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
-                                </StackPanel>
+                                <Grid Grid.Column="0">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Grid.Row="0" Text="{x:Bind conv:DisplayHelper.SignedDb(Vm.EqBand0), Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" TextAlignment="Center" />
+                                    <Slider Grid.Row="1" Orientation="Vertical" HorizontalAlignment="Center" Width="32" Minimum="-8" Maximum="8" StepFrequency="1" SnapsTo="StepValues" Value="{x:Bind Vm.EqBand0, Mode=TwoWay}" Margin="0,4" />
+                                    <TextBlock Grid.Row="2" Text="31" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" TextAlignment="Center" />
+                                </Grid>
+                                <Grid Grid.Column="1">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Grid.Row="0" Text="{x:Bind conv:DisplayHelper.SignedDb(Vm.EqBand1), Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" TextAlignment="Center" />
+                                    <Slider Grid.Row="1" Orientation="Vertical" HorizontalAlignment="Center" Width="32" Minimum="-8" Maximum="8" StepFrequency="1" SnapsTo="StepValues" Value="{x:Bind Vm.EqBand1, Mode=TwoWay}" Margin="0,4" />
+                                    <TextBlock Grid.Row="2" Text="62" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" TextAlignment="Center" />
+                                </Grid>
+                                <Grid Grid.Column="2">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Grid.Row="0" Text="{x:Bind conv:DisplayHelper.SignedDb(Vm.EqBand2), Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" TextAlignment="Center" />
+                                    <Slider Grid.Row="1" Orientation="Vertical" HorizontalAlignment="Center" Width="32" Minimum="-8" Maximum="8" StepFrequency="1" SnapsTo="StepValues" Value="{x:Bind Vm.EqBand2, Mode=TwoWay}" Margin="0,4" />
+                                    <TextBlock Grid.Row="2" Text="125" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" TextAlignment="Center" />
+                                </Grid>
+                                <Grid Grid.Column="3">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Grid.Row="0" Text="{x:Bind conv:DisplayHelper.SignedDb(Vm.EqBand3), Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" TextAlignment="Center" />
+                                    <Slider Grid.Row="1" Orientation="Vertical" HorizontalAlignment="Center" Width="32" Minimum="-8" Maximum="8" StepFrequency="1" SnapsTo="StepValues" Value="{x:Bind Vm.EqBand3, Mode=TwoWay}" Margin="0,4" />
+                                    <TextBlock Grid.Row="2" Text="250" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" TextAlignment="Center" />
+                                </Grid>
+                                <Grid Grid.Column="4">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Grid.Row="0" Text="{x:Bind conv:DisplayHelper.SignedDb(Vm.EqBand4), Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" TextAlignment="Center" />
+                                    <Slider Grid.Row="1" Orientation="Vertical" HorizontalAlignment="Center" Width="32" Minimum="-8" Maximum="8" StepFrequency="1" SnapsTo="StepValues" Value="{x:Bind Vm.EqBand4, Mode=TwoWay}" Margin="0,4" />
+                                    <TextBlock Grid.Row="2" Text="500" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" TextAlignment="Center" />
+                                </Grid>
+                                <Grid Grid.Column="5">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Grid.Row="0" Text="{x:Bind conv:DisplayHelper.SignedDb(Vm.EqBand5), Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" TextAlignment="Center" />
+                                    <Slider Grid.Row="1" Orientation="Vertical" HorizontalAlignment="Center" Width="32" Minimum="-8" Maximum="8" StepFrequency="1" SnapsTo="StepValues" Value="{x:Bind Vm.EqBand5, Mode=TwoWay}" Margin="0,4" />
+                                    <TextBlock Grid.Row="2" Text="1k" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" TextAlignment="Center" />
+                                </Grid>
+                                <Grid Grid.Column="6">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Grid.Row="0" Text="{x:Bind conv:DisplayHelper.SignedDb(Vm.EqBand6), Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" TextAlignment="Center" />
+                                    <Slider Grid.Row="1" Orientation="Vertical" HorizontalAlignment="Center" Width="32" Minimum="-8" Maximum="8" StepFrequency="1" SnapsTo="StepValues" Value="{x:Bind Vm.EqBand6, Mode=TwoWay}" Margin="0,4" />
+                                    <TextBlock Grid.Row="2" Text="2k" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" TextAlignment="Center" />
+                                </Grid>
+                                <Grid Grid.Column="7">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Grid.Row="0" Text="{x:Bind conv:DisplayHelper.SignedDb(Vm.EqBand7), Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" TextAlignment="Center" />
+                                    <Slider Grid.Row="1" Orientation="Vertical" HorizontalAlignment="Center" Width="32" Minimum="-8" Maximum="8" StepFrequency="1" SnapsTo="StepValues" Value="{x:Bind Vm.EqBand7, Mode=TwoWay}" Margin="0,4" />
+                                    <TextBlock Grid.Row="2" Text="4k" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" TextAlignment="Center" />
+                                </Grid>
+                                <Grid Grid.Column="8">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Grid.Row="0" Text="{x:Bind conv:DisplayHelper.SignedDb(Vm.EqBand8), Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" TextAlignment="Center" />
+                                    <Slider Grid.Row="1" Orientation="Vertical" HorizontalAlignment="Center" Width="32" Minimum="-8" Maximum="8" StepFrequency="1" SnapsTo="StepValues" Value="{x:Bind Vm.EqBand8, Mode=TwoWay}" Margin="0,4" />
+                                    <TextBlock Grid.Row="2" Text="8k" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" TextAlignment="Center" />
+                                </Grid>
+                                <Grid Grid.Column="9">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Grid.Row="0" Text="{x:Bind conv:DisplayHelper.SignedDb(Vm.EqBand9), Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" TextAlignment="Center" />
+                                    <Slider Grid.Row="1" Orientation="Vertical" HorizontalAlignment="Center" Width="32" Minimum="-8" Maximum="8" StepFrequency="1" SnapsTo="StepValues" Value="{x:Bind Vm.EqBand9, Mode=TwoWay}" Margin="0,4" />
+                                    <TextBlock Grid.Row="2" Text="16k" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" TextAlignment="Center" />
+                                </Grid>
                             </Grid>
                         </StackPanel>
                     </Border>
@@ -318,6 +414,7 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
+                        <!-- Key mapping: 支持 单/双/三/四击/长按 -->
                         <Border Grid.Column="0" Style="{StaticResource AppCardStyle}" Visibility="{x:Bind Vm.CurrentProfile.SupportsKeyCustomization, Mode=OneWay}">
                             <StackPanel Spacing="10">
                                 <TextBlock Text="按键触控自定义" Style="{StaticResource AppSectionHeaderStyle}" Margin="0" />
@@ -328,6 +425,7 @@
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="Auto" />
@@ -350,9 +448,13 @@
                                     <ComboBox Grid.Row="3" Grid.Column="1" HorizontalAlignment="Stretch" DisplayMemberPath="Display" ItemsSource="{x:Bind Vm.KeyFunctionOptions}" SelectedItem="{x:Bind Vm.LeftTripleTap, Mode=TwoWay}" />
                                     <ComboBox Grid.Row="3" Grid.Column="2" HorizontalAlignment="Stretch" DisplayMemberPath="Display" ItemsSource="{x:Bind Vm.KeyFunctionOptions}" SelectedItem="{x:Bind Vm.RightTripleTap, Mode=TwoWay}" />
 
-                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="长按" VerticalAlignment="Center" />
-                                    <ComboBox Grid.Row="4" Grid.Column="1" HorizontalAlignment="Stretch" DisplayMemberPath="Display" ItemsSource="{x:Bind Vm.KeyFunctionOptions}" SelectedItem="{x:Bind Vm.LeftLongPress, Mode=TwoWay}" />
-                                    <ComboBox Grid.Row="4" Grid.Column="2" HorizontalAlignment="Stretch" DisplayMemberPath="Display" ItemsSource="{x:Bind Vm.KeyFunctionOptions}" SelectedItem="{x:Bind Vm.RightLongPress, Mode=TwoWay}" />
+                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="四击" VerticalAlignment="Center" Visibility="{x:Bind Vm.CurrentProfile.SupportsQuadrupleTap, Mode=OneWay}" />
+                                    <ComboBox Grid.Row="4" Grid.Column="1" HorizontalAlignment="Stretch" DisplayMemberPath="Display" ItemsSource="{x:Bind Vm.KeyFunctionOptions}" SelectedItem="{x:Bind Vm.LeftQuadrupleTap, Mode=TwoWay}" Visibility="{x:Bind Vm.CurrentProfile.SupportsQuadrupleTap, Mode=OneWay}" />
+                                    <ComboBox Grid.Row="4" Grid.Column="2" HorizontalAlignment="Stretch" DisplayMemberPath="Display" ItemsSource="{x:Bind Vm.KeyFunctionOptions}" SelectedItem="{x:Bind Vm.RightQuadrupleTap, Mode=TwoWay}" Visibility="{x:Bind Vm.CurrentProfile.SupportsQuadrupleTap, Mode=OneWay}" />
+
+                                    <TextBlock Grid.Row="5" Grid.Column="0" Text="长按" VerticalAlignment="Center" />
+                                    <ComboBox Grid.Row="5" Grid.Column="1" HorizontalAlignment="Stretch" DisplayMemberPath="Display" ItemsSource="{x:Bind Vm.KeyFunctionOptions}" SelectedItem="{x:Bind Vm.LeftLongPress, Mode=TwoWay}" />
+                                    <ComboBox Grid.Row="5" Grid.Column="2" HorizontalAlignment="Stretch" DisplayMemberPath="Display" ItemsSource="{x:Bind Vm.KeyFunctionOptions}" SelectedItem="{x:Bind Vm.RightLongPress, Mode=TwoWay}" />
                                 </Grid>
 
                                 <Button

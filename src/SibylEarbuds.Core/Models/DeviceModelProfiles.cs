@@ -66,6 +66,7 @@ public static class DeviceModelProfiles
             SupportsEq = true,
             SupportsGameMode = true,
             SupportsKeyCustomization = true,
+            SupportsQuadrupleTap = false, // 官方 APK B1 仅支持 单/双/三击/长按
             SupportsFindEarphone = true,
             SupportsWhiteNoise = true
         });
@@ -200,6 +201,24 @@ public static class DeviceModelProfiles
         // 11. WF200 / WS200 LDAC
         Register(new DeviceCapability
         {
+            ModelId = "WS200",
+            DisplayName = "SIBYL WS200 PRO (LDAC)",
+            ChipDescription = "Realtek 高清无损音频平台",
+            ChipPlatform = BluetoothChipPlatform.Realtek,
+            SupportsAnc = true,
+            SupportsAncDepth = true,
+            SupportsEq = true,
+            SupportsGameMode = true,
+            SupportsLdacHiRes = true,
+            SupportsKeyCustomization = true,
+            SupportsQuadrupleTap = true,
+            SupportsFindEarphone = true,
+            SupportsToneVolume = true,
+            SupportsWhiteNoise = true
+        });
+
+        Register(new DeviceCapability
+        {
             ModelId = "WF200",
             DisplayName = "SIBYL WF200 / WS200 LDAC",
             ChipDescription = "Realtek 高清无损音频平台",
@@ -209,6 +228,8 @@ public static class DeviceModelProfiles
             SupportsEq = true,
             SupportsGameMode = true,
             SupportsLdacHiRes = true,
+            SupportsKeyCustomization = true,
+            SupportsQuadrupleTap = true,
             SupportsFindEarphone = true,
             SupportsToneVolume = true,
             SupportsWhiteNoise = true

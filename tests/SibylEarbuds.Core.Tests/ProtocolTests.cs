@@ -11,7 +11,7 @@ public class ProtocolTests
     [Fact]
     public void Test_BuildAndParse_AncPacket()
     {
-        var packet = PacketBuilder.BuildAncPacket(AncModeType.Transparency, AncDepthLevel.Comfortable);
+        var packet = PacketBuilder.BuildAncPacket(AncModeType.NoiseReduction, AncDepthLevel.Comfortable);
 
         Assert.Equal(PacketBuilder.StartByte, packet[0]); // 0xFF
         Assert.Equal(3, packet[2]); // Len = 1(cmd) + 2(payload) = 3
@@ -22,14 +22,19 @@ public class ProtocolTests
         Assert.True(parsed.IsSuccess);
         Assert.Equal(SibylCommandId.AncMode, parsed.CommandId);
         Assert.Equal(2, parsed.Payload.Length);
-        Assert.Equal((byte)AncModeType.Transparency, parsed.Payload[0]);
+        Assert.Equal((byte)AncModeType.NoiseReduction, parsed.Payload[0]);
         Assert.Equal((byte)AncDepthLevel.Comfortable, parsed.Payload[1]);
 
         var status = new DeviceStatus();
         bool applied = PacketParser.ApplyToStatus(parsed, status);
         Assert.True(applied);
-        Assert.Equal(AncModeType.Transparency, status.Anc.Mode);
+        Assert.Equal(AncModeType.NoiseReduction, status.Anc.Mode);
         Assert.Equal(AncDepthLevel.Comfortable, status.Anc.Depth);
+
+        // 验证切通透模式时 depth 严格置为 0，杜绝误触发深度降噪
+        var transPacket = PacketBuilder.BuildAncPacket(AncModeType.Transparency, AncDepthLevel.Deep);
+        var parsedTrans = PacketParser.Parse(transPacket);
+        Assert.Equal((byte)0, parsedTrans.Payload[1]);
     }
 
     [Fact]

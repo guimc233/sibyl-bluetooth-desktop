@@ -143,12 +143,12 @@ public class EarbudDeviceService : IDisposable
     /// <summary>
     /// 保存按键自定义映射
     /// </summary>
-    public async Task<bool> SaveKeySettingsAsync(EarbudKeySettings settings)
+    public async Task<bool> SaveKeySettingsAsync(EarbudKeySettings settings, bool supportsQuadruple = true)
     {
         CurrentStatus.KeySettings = settings;
         StatusUpdated?.Invoke(CurrentStatus);
 
-        var packet = PacketBuilder.BuildKeySettingsPacket(settings);
+        var packet = PacketBuilder.BuildKeySettingsPacket(settings, supportsQuadruple);
         return await Dispatcher.SendCriticalCommandAsync(SibylCommandId.KeyFunction, packet);
     }
 

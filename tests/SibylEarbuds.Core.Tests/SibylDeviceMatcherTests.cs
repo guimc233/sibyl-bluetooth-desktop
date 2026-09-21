@@ -64,13 +64,18 @@ public class SibylDeviceMatcherTests
     }
 
     [Fact]
-    public void RejectsUnknownVendorId()
+    public void RejectsUnknownCompanyId()
     {
-        // 官方产品清单之外的 VendorId 必须被忽略（设备不出现在列表中）
-        Assert.False(SibylDeviceMatcher.TryParseSibylAdvertisement(SibylAdv(0xABCD), out _));
-        Assert.False(SibylDeviceMatcher.IsSibylEarbuds(SibylAdv(0x1234)));
-        // 厂商数据里带他机型、但 CompanyID 错误也要忽略
-        Assert.False(SibylDeviceMatcher.IsSibylEarbuds(new Dictionary<ushort, byte[]> { [0x3E21] = new byte[12] }));
+        // 非 51474 且无 SIBYL 特征的厂商数据必须被忽略
+        var unknownCompanyAdv = new Dictionary<ushort, byte[]>
+        {
+            [0x1234] = new byte[12]
+        };
+        Assert.False(SibylDeviceMatcher.IsSibylEarbuds(unknownCompanyAdv));
+
+        // 官方广播中的未知新机型 VendorId 会自动回退为 PRO 通用适配，而不会被丢弃
+        Assert.True(SibylDeviceMatcher.TryParseSibylAdvertisement(SibylAdv(0xABCD), out var fallback));
+        Assert.Equal("PRO", fallback.ModelName);
     }
 
     [Fact]

@@ -22,13 +22,18 @@ public class PacketProtocolTests
     [Fact]
     public void Parse_RoundTripsBuiltPacket()
     {
-        byte[] packet = PacketBuilder.BuildAncPacket(AncModeType.Transparency, AncDepthLevel.Comfortable);
+        byte[] packet = PacketBuilder.BuildAncPacket(AncModeType.NoiseReduction, AncDepthLevel.Comfortable);
 
         var parsed = PacketParser.Parse(packet);
 
         Assert.True(parsed.IsSuccess);
         Assert.Equal(SibylCommandId.AncMode, parsed.CommandId);
-        Assert.Equal([(byte)AncModeType.Transparency, (byte)AncDepthLevel.Comfortable], parsed.Payload);
+        Assert.Equal([(byte)AncModeType.NoiseReduction, (byte)AncDepthLevel.Comfortable], parsed.Payload);
+
+        // 验证非降噪模式（普通与通透）下第二字节严格为 0
+        byte[] transPacket = PacketBuilder.BuildAncPacket(AncModeType.Transparency, AncDepthLevel.Deep);
+        var transParsed = PacketParser.Parse(transPacket);
+        Assert.Equal(0, transParsed.Payload[1]);
     }
 
     [Fact]

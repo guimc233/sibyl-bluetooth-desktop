@@ -23,10 +23,11 @@ public enum KeyFunctionType : byte
 /// </summary>
 public enum TouchGestureType : byte
 {
-    SingleTap = 1,   // 单击
-    DoubleTap = 2,   // 双击
-    TripleTap = 3,   // 三击
-    LongPress = 5    // 长按
+    SingleTap = 1,      // 单击
+    DoubleTap = 2,      // 双击
+    TripleTap = 3,      // 三击
+    QuadrupleTap = 4,   // 四击 (官方 APK: eventID 4 / 20)
+    LongPress = 5       // 长按
 }
 
 /// <summary>
@@ -53,10 +54,12 @@ public class EarbudKeySettings
     public KeyFunctionType LeftSingleTap { get; set; } = KeyFunctionType.PlayPause;
     public KeyFunctionType LeftDoubleTap { get; set; } = KeyFunctionType.PreviousTrack;
     public KeyFunctionType LeftTripleTap { get; set; } = KeyFunctionType.VoiceAssistant;
+    public KeyFunctionType LeftQuadrupleTap { get; set; } = KeyFunctionType.GameMode;
     public KeyFunctionType LeftLongPress { get; set; } = KeyFunctionType.AncToggle;
 
     public KeyFunctionType RightSingleTap { get; set; } = KeyFunctionType.PlayPause;
     public KeyFunctionType RightDoubleTap { get; set; } = KeyFunctionType.NextTrack;
     public KeyFunctionType RightTripleTap { get; set; } = KeyFunctionType.GameMode;
+    public KeyFunctionType RightQuadrupleTap { get; set; } = KeyFunctionType.VoiceAssistant;
     public KeyFunctionType RightLongPress { get; set; } = KeyFunctionType.AncToggle;
 }

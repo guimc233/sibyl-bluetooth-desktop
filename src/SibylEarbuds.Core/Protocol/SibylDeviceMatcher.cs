@@ -18,10 +18,11 @@ public readonly record struct SibylAdvertisement(
 
 /// <summary>
 /// SIBYL 设备多层智能识别与过滤（确保列表中仅出现 SIBYL 耳机并自动识别机型）：
-/// 1. 官方 0xC912 厂商广播与 VendorId 识别（提取官方型号与电量）；
+/// 1. 官方 0xC912 厂商广播与 VendorId 识别（提取官方型号与电量，即使用户在 App 中重命名设备仍可精准识别）；
 /// 2. 杰理/炬力/瑞昱常用 Company ID (0x3E21 / 0x12CC / 0x3D11 / 0x05D6) 特征识别；
 /// 3. SIBYL 专用 GATT Service UUID (0x00FE / 0xAE00 / 0xAE30) 识别；
-/// 4. 设备本地广播名称前缀判定（必须包含 SIBYL 或特定官方型号前缀，彻底过滤无关非 SIBYL 设备）。
+/// 4. 设备本地广播名称判定（包含 SIBYL 或特定官方型号前缀）；
+/// 5. 任何苹果、华为、小米、索尼、PC、电视等非 SIBYL 设备由于均不具备上述特征，将被彻底过滤丢弃。
 /// </summary>
 public static class SibylDeviceMatcher
 {
@@ -51,7 +52,7 @@ public static class SibylDeviceMatcher
         };
 
     /// <summary>
-    /// 官方定义的已知型号前缀，用于严格过滤非 SIBYL 蓝牙设备。
+    /// 官方定义的已知型号前缀，用于过滤非 SIBYL 蓝牙设备。
     /// </summary>
     public static readonly string[] KnownNamePrefixes =
     [
@@ -70,7 +71,7 @@ public static class SibylDeviceMatcher
     /// 官方 APK 广播识别算法：
     /// 1. 必须存在 CompanyID = <see cref="SibylManufacturerId"/> 的厂商数据；
     /// 2. payload 长度必须 &gt;= <see cref="MinAdvertisementLength"/>；
-    /// 3. 前 2 字节 (Big-Endian) 的 VendorId 必须在官方产品清单中。
+    /// 3. 前 2 字节为 VendorId。命中 KnownModels 则精确返回型号，未在字典中仍确认为 SIBYL（型号回退 PRO）。
     /// </summary>
     public static bool TryParseSibylAdvertisement(
         IReadOnlyDictionary<ushort, byte[]>? manufacturerData,
@@ -87,10 +88,7 @@ public static class SibylDeviceMatcher
         }
 
         int vendorId = ((payload[0] & 0xFF) << 8) | (payload[1] & 0xFF);
-        if (!KnownModels.TryGetValue((ushort)vendorId, out string? modelName))
-        {
-            return false;
-        }
+        string modelName = KnownModels.TryGetValue((ushort)vendorId, out string? name) ? name : "PRO";
 
         advertisement = new SibylAdvertisement(
             vendorId,
@@ -103,11 +101,11 @@ public static class SibylDeviceMatcher
     }
 
     /// <summary>
-    /// 综合判定是否为 SIBYL 耳机（多层过滤，严防非 SIBYL 设备混入，同时确保各型号 SIBYL 耳机均能搜到）：
-    /// 1. 广播厂商数据命中官方 0xC912；
+    /// 综合判定是否为 SIBYL 耳机（多层过滤，严防非 SIBYL 设备混入，同时确保各型号 SIBYL 耳机即使用户重命名也能搜到）：
+    /// 1. 广播厂商数据命中官方 0xC912（即使用户在 App 中将耳机重命名为任何文字，固件厂商广播依然保持不变）；
     /// 2. 广播厂商数据命中 0x3E21 / 0x12CC / 0x3D11 / 0x05D6 等双模芯片特征；
-    /// 3. 广播服务 UUID 包含官方 SIBYL 控制通道；
-    /// 4. 设备名称包含 SIBYL 或官方知名型号。
+    /// 3. 广播服务 UUID 包含官方 SIBYL 控制通道 (0x00FE / 0xAE00 / 0xAE30)；
+    /// 4. 设备名称包含 SIBYL 或官方型号前缀。
     /// </summary>
     public static bool TryMatchSibylDevice(
         string? localName,
@@ -119,14 +117,19 @@ public static class SibylDeviceMatcher
         adv = default;
         identifiedModel = "PRO";
 
-        // 1. 优先尝试从官方厂商广播精准解析
+        // 1. 优先尝试从官方 0xC912 厂商广播精准解析（无论名称是否被用户在手机 App 自定义修改）
         if (TryParseSibylAdvertisement(manufacturerData, out adv))
         {
             identifiedModel = adv.ModelName;
+            if (identifiedModel == "PRO" && !string.IsNullOrWhiteSpace(localName))
+            {
+                identifiedModel = ExtractModelFromName(localName);
+            }
             return true;
         }
 
-        // 2. 检查广播厂商自定义字段
+        // 2. 检查广播厂商数据中是否含有已知芯片/厂商自定义标识（0x3E21 / 0x12CC / 0x3D11 / 0x05D6 等）
+        // （这些是由耳机固件写入广播包的，用户在手机端自定义改名不会破坏这些标识）
         if (manufacturerData != null)
         {
             foreach (var kvp in manufacturerData)
@@ -134,8 +137,13 @@ public static class SibylDeviceMatcher
                 if (kvp.Key == SibylManufacturerId || kvp.Key == 0x3E21 || kvp.Key == 0x3E22 ||
                     kvp.Key == 0x3D11 || kvp.Key == 0x12CC || kvp.Key == 0x05D6)
                 {
-                    identifiedModel = ExtractModelFromName(localName);
-                    adv = new SibylAdvertisement(0, identifiedModel, -1, -1, -1);
+                    int vId = 0;
+                    if (kvp.Value != null && kvp.Value.Length >= 2)
+                    {
+                        vId = ((kvp.Value[0] & 0xFF) << 8) | (kvp.Value[1] & 0xFF);
+                    }
+                    identifiedModel = ResolveModel(vId, localName);
+                    adv = new SibylAdvertisement(vId, identifiedModel, -1, -1, -1);
                     return true;
                 }
 
@@ -156,7 +164,8 @@ public static class SibylDeviceMatcher
             }
         }
 
-        // 3. 检查专用服务 UUID 广播
+        // 3. 检查专用 GATT 服务 UUID（官方 0x00FE / 杰理 0xAE00 / 0xAE30 通道）
+        // 耳机改名后，此专用 Service UUID 依然在 BLE 广播中存在，且非 SIBYL 设备绝不具备
         if (serviceUuids != null)
         {
             foreach (var uuid in serviceUuids)
@@ -170,12 +179,11 @@ public static class SibylDeviceMatcher
             }
         }
 
-        // 4. 名称严格过滤（只允许 SIBYL 品牌设备）
+        // 4. 名称检查（未改名时的出厂默认名称：包含 SIBYL 或特定官方型号）
         if (!string.IsNullOrWhiteSpace(localName))
         {
             string upper = localName.Trim().ToUpperInvariant();
 
-            // 包含 "SIBYL" 必定是 SIBYL 耳机
             if (upper.Contains("SIBYL"))
             {
                 identifiedModel = ExtractModelFromName(localName);
@@ -183,7 +191,6 @@ public static class SibylDeviceMatcher
                 return true;
             }
 
-            // 检查已知官方型号前缀
             foreach (var prefix in KnownNamePrefixes)
             {
                 if (upper.StartsWith(prefix + " ", StringComparison.OrdinalIgnoreCase) ||
@@ -199,6 +206,28 @@ public static class SibylDeviceMatcher
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// 优先从 VendorId 匹配，其次从名称中提取型号。
+    /// </summary>
+    public static string ResolveModel(int vendorId, string? localName)
+    {
+        if (vendorId > 0 && KnownModels.TryGetValue((ushort)vendorId, out string? name))
+        {
+            return name;
+        }
+
+        if (!string.IsNullOrWhiteSpace(localName))
+        {
+            string fromName = ExtractModelFromName(localName);
+            if (fromName != "PRO")
+            {
+                return fromName;
+            }
+        }
+
+        return "PRO";
     }
 
     /// <summary>

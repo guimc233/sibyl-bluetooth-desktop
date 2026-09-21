@@ -40,10 +40,13 @@ public static class PacketBuilder
 
     /// <summary>
     /// 构建 ANC 降噪模式切换包 (官方 ProductClient.ancModelChange)
+    /// 注意：官方协议规范中，仅在降噪模式 (NoiseReduction=1) 下第二字节才为深度 (1=舒适, 2=深度)；
+    /// 在普通模式 (2) 和通透模式 (3) 下，第二字节必须为 0，否则耳机会误触发深度降噪！
     /// </summary>
     public static byte[] BuildAncPacket(AncModeType mode, AncDepthLevel depth = AncDepthLevel.Deep)
     {
-        byte[] payload = [(byte)mode, (byte)depth];
+        byte depthByte = mode == AncModeType.NoiseReduction ? (byte)depth : (byte)0;
+        byte[] payload = [(byte)mode, depthByte];
         return BuildPacket(SibylCommandId.AncMode, payload);
     }
 
@@ -96,22 +99,33 @@ public static class PacketBuilder
     }
 
     /// <summary>
-    /// 构建批量按键手势包
+    /// 构建批量按键手势包（支持 单/双/三/四击/长按）
     /// </summary>
-    public static byte[] BuildKeySettingsPacket(EarbudKeySettings settings)
+    public static byte[] BuildKeySettingsPacket(EarbudKeySettings settings, bool supportsQuadruple = true)
     {
-        // 左右耳各常用手势配置映射
-        byte[] payload =
-        [
-            1, (byte)settings.LeftSingleTap,
-            2, (byte)settings.LeftDoubleTap,
-            3, (byte)settings.LeftTripleTap,
-            5, (byte)settings.LeftLongPress,
-            17, (byte)settings.RightSingleTap,
-            18, (byte)settings.RightDoubleTap,
-            19, (byte)settings.RightTripleTap,
-            21, (byte)settings.RightLongPress
-        ];
+        byte[] payload = supportsQuadruple
+            ? [
+                1, (byte)settings.LeftSingleTap,
+                2, (byte)settings.LeftDoubleTap,
+                3, (byte)settings.LeftTripleTap,
+                4, (byte)settings.LeftQuadrupleTap,
+                5, (byte)settings.LeftLongPress,
+                17, (byte)settings.RightSingleTap,
+                18, (byte)settings.RightDoubleTap,
+                19, (byte)settings.RightTripleTap,
+                20, (byte)settings.RightQuadrupleTap,
+                21, (byte)settings.RightLongPress
+            ]
+            : [
+                1, (byte)settings.LeftSingleTap,
+                2, (byte)settings.LeftDoubleTap,
+                3, (byte)settings.LeftTripleTap,
+                5, (byte)settings.LeftLongPress,
+                17, (byte)settings.RightSingleTap,
+                18, (byte)settings.RightDoubleTap,
+                19, (byte)settings.RightTripleTap,
+                21, (byte)settings.RightLongPress
+            ];
         return BuildPacket(SibylCommandId.KeyFunction, payload);
     }
 

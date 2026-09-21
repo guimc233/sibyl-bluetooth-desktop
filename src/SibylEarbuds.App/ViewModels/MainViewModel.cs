@@ -69,10 +69,12 @@ public class MainViewModel : ViewModelBase, IDisposable
     private KeyFunctionOption _leftSingleTap;
     private KeyFunctionOption _leftDoubleTap;
     private KeyFunctionOption _leftTripleTap;
+    private KeyFunctionOption _leftQuadrupleTap;
     private KeyFunctionOption _leftLongPress;
     private KeyFunctionOption _rightSingleTap;
     private KeyFunctionOption _rightDoubleTap;
     private KeyFunctionOption _rightTripleTap;
+    private KeyFunctionOption _rightQuadrupleTap;
     private KeyFunctionOption _rightLongPress;
 
     // Sound
@@ -98,10 +100,12 @@ public class MainViewModel : ViewModelBase, IDisposable
         _leftSingleTap = OptionFor(_keySettings.LeftSingleTap);
         _leftDoubleTap = OptionFor(_keySettings.LeftDoubleTap);
         _leftTripleTap = OptionFor(_keySettings.LeftTripleTap);
+        _leftQuadrupleTap = OptionFor(_keySettings.LeftQuadrupleTap);
         _leftLongPress = OptionFor(_keySettings.LeftLongPress);
         _rightSingleTap = OptionFor(_keySettings.RightSingleTap);
         _rightDoubleTap = OptionFor(_keySettings.RightDoubleTap);
         _rightTripleTap = OptionFor(_keySettings.RightTripleTap);
+        _rightQuadrupleTap = OptionFor(_keySettings.RightQuadrupleTap);
         _rightLongPress = OptionFor(_keySettings.RightLongPress);
 
         ScanCommand = new AsyncRelayCommand(StartScanAsync);
@@ -112,7 +116,10 @@ public class MainViewModel : ViewModelBase, IDisposable
         ToggleFindEarphoneCommand = new RelayCommand(() => _ = ToggleFindEarphoneAsync());
         ResetDefaultsCommand = new AsyncRelayCommand(() => _deviceService.ResetSettingsAsync(false));
         FactoryResetCommand = new AsyncRelayCommand(() => _deviceService.ResetSettingsAsync(true));
-        SaveKeySettingsCommand = new AsyncRelayCommand(() => _deviceService.SaveKeySettingsAsync(_keySettings));
+        SaveKeySettingsCommand = new AsyncRelayCommand(() => _deviceService.SaveKeySettingsAsync(_keySettings, CurrentProfile.SupportsQuadrupleTap));
+        SetAncModeCommand = new AsyncRelayCommand(param => SetAncModeAsync((AncModeType)Convert.ToInt32(param)));
+        SetAncDepthCommand = new AsyncRelayCommand(param => SetAncDepthAsync((AncDepthLevel)Convert.ToInt32(param)));
+        ApplyEqCommand = new AsyncRelayCommand(ApplyEqAsync);
         SwitchTransportCommand = new RelayCommand(ToggleTransportMode);
         PlaySoundCommand = new RelayCommand(param => PlaySound(param as BuiltInSoundInfo));
         StopSoundCommand = new RelayCommand(() => _audioPlayer.Stop());
@@ -170,6 +177,9 @@ public class MainViewModel : ViewModelBase, IDisposable
     public ICommand ResetDefaultsCommand { get; }
     public ICommand FactoryResetCommand { get; }
     public ICommand SaveKeySettingsCommand { get; }
+    public ICommand SetAncModeCommand { get; }
+    public ICommand SetAncDepthCommand { get; }
+    public ICommand ApplyEqCommand { get; }
     public ICommand SwitchTransportCommand { get; }
     public ICommand PlaySoundCommand { get; }
     public ICommand StopSoundCommand { get; }
@@ -300,6 +310,12 @@ public class MainViewModel : ViewModelBase, IDisposable
 
     #region ANC properties
 
+    public bool IsAncModeActive => _currentAncMode == AncModeType.NoiseReduction;
+    public bool IsNormalModeActive => _currentAncMode == AncModeType.Normal;
+    public bool IsTransparencyModeActive => _currentAncMode == AncModeType.Transparency;
+    public bool IsComfortDepthActive => _currentAncDepth == AncDepthLevel.Comfortable;
+    public bool IsDeepDepthActive => _currentAncDepth == AncDepthLevel.Deep;
+
     public int AncModeIndex
     {
         get => (int)_currentAncMode - 1;
@@ -312,15 +328,7 @@ public class MainViewModel : ViewModelBase, IDisposable
                 return;
             }
 
-            _currentAncMode = mode;
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(AncStatusText));
-            OnPropertyChanged(nameof(SupportsAncDepthNow));
-
-            if (!_suppressRemote)
-            {
-                _ = _deviceService.SetAncModeAsync(mode, _currentAncDepth);
-            }
+            _ = SetAncModeAsync(mode);
         }
     }
 
@@ -335,18 +343,47 @@ public class MainViewModel : ViewModelBase, IDisposable
                 return;
             }
 
-            _currentAncDepth = depth;
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(AncStatusText));
-
-            if (!_suppressRemote && _currentAncMode == AncModeType.NoiseReduction)
-            {
-                _ = _deviceService.SetAncModeAsync(AncModeType.NoiseReduction, depth);
-            }
+            _ = SetAncDepthAsync(depth);
         }
     }
 
-    public bool SupportsAncDepthNow => CurrentProfile.SupportsAncDepth;
+    public async Task SetAncModeAsync(AncModeType mode)
+    {
+        _currentAncMode = mode;
+        NotifyAncProperties();
+
+        if (!_suppressRemote)
+        {
+            var depth = mode == AncModeType.NoiseReduction ? _currentAncDepth : AncDepthLevel.Standard;
+            await _deviceService.SetAncModeAsync(mode, depth);
+        }
+    }
+
+    public async Task SetAncDepthAsync(AncDepthLevel depth)
+    {
+        _currentAncDepth = depth;
+        NotifyAncProperties();
+
+        if (!_suppressRemote && _currentAncMode == AncModeType.NoiseReduction)
+        {
+            await _deviceService.SetAncModeAsync(AncModeType.NoiseReduction, depth);
+        }
+    }
+
+    private void NotifyAncProperties()
+    {
+        OnPropertyChanged(nameof(AncModeIndex));
+        OnPropertyChanged(nameof(AncDepthIndex));
+        OnPropertyChanged(nameof(AncStatusText));
+        OnPropertyChanged(nameof(SupportsAncDepthNow));
+        OnPropertyChanged(nameof(IsAncModeActive));
+        OnPropertyChanged(nameof(IsNormalModeActive));
+        OnPropertyChanged(nameof(IsTransparencyModeActive));
+        OnPropertyChanged(nameof(IsComfortDepthActive));
+        OnPropertyChanged(nameof(IsDeepDepthActive));
+    }
+
+    public bool SupportsAncDepthNow => CurrentProfile.SupportsAncDepth && _currentAncMode == AncModeType.NoiseReduction;
 
     public string AncStatusText => (_currentAncMode, _currentAncDepth) switch
     {
@@ -494,11 +531,6 @@ public class MainViewModel : ViewModelBase, IDisposable
 
             Array.Copy(value.Gains, _eqGains, _eqGains.Length);
             NotifyAllEqBands();
-
-            if (!_suppressRemote)
-            {
-                _ = _deviceService.ApplyEqPresetAsync(value);
-            }
         }
     }
 
@@ -535,6 +567,12 @@ public class MainViewModel : ViewModelBase, IDisposable
         set => SetKeyOption(ref _leftTripleTap, value, v => _keySettings.LeftTripleTap = v);
     }
 
+    public KeyFunctionOption LeftQuadrupleTap
+    {
+        get => _leftQuadrupleTap;
+        set => SetKeyOption(ref _leftQuadrupleTap, value, v => _keySettings.LeftQuadrupleTap = v);
+    }
+
     public KeyFunctionOption LeftLongPress
     {
         get => _leftLongPress;
@@ -557,6 +595,12 @@ public class MainViewModel : ViewModelBase, IDisposable
     {
         get => _rightTripleTap;
         set => SetKeyOption(ref _rightTripleTap, value, v => _keySettings.RightTripleTap = v);
+    }
+
+    public KeyFunctionOption RightQuadrupleTap
+    {
+        get => _rightQuadrupleTap;
+        set => SetKeyOption(ref _rightQuadrupleTap, value, v => _keySettings.RightQuadrupleTap = v);
     }
 
     public KeyFunctionOption RightLongPress
@@ -716,7 +760,13 @@ public class MainViewModel : ViewModelBase, IDisposable
 
         _eqGains[index] = gain;
         OnPropertyChanged($"EqBand{index}");
-        _deviceService.SetEqGains(_eqGains);
+    }
+
+    public async Task ApplyEqAsync()
+    {
+        int presetId = SelectedEqPreset?.PresetId ?? 255;
+        await _deviceService.ApplyEqGainsAsync(_eqGains, presetId);
+        AddLog($"[EQ] 10 段均衡器配置已保存并下发至耳机 ({SelectedEqPreset?.Name ?? "自定义"})");
     }
 
     private void NotifyAllEqBands()

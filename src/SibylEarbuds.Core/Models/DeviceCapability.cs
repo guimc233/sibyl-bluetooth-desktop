@@ -30,6 +30,7 @@ public class DeviceCapability
     public bool SupportsGameMode { get; set; } = true;  // 38ms 低延迟游戏模式
     public bool SupportsLightEffect { get; set; }       // RGB 炫彩灯效模式 (如 B6)
     public bool SupportsKeyCustomization { get; set; } = true; // 按键手势映射
+    public bool SupportsQuadrupleTap { get; set; } = true;    // 支持四击手势 (部分早期机型如 B1 仅支持到三击)
     public bool SupportsTouchLock { get; set; }         // 触控锁定 (防误触)
     public bool SupportsTimedShutdown { get; set; }     // 定时自动关机
     public bool SupportsSleepMode { get; set; }         // 睡眠模式
