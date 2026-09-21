@@ -69,18 +69,29 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
-      - name: Install MSIX Packaging Tools (MrtCore PRI MSBuild tasks)
+      - name: Install MSIX Packaging Tools (MrtCore PRI MSBuild tasks) if missing
         shell: pwsh
         run: |
           $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
           $vs = & $vswhere -latest -property installationPath
           if (-not $vs) { throw "vswhere returned no Visual Studio installation path" }
           Write-Host "Detected Visual Studio: $vs"
-          & "$vs\Installer\vs_installer.exe" modify --installPath $vs --add Microsoft.VisualStudio.ComponentGroup.MSIX.Packaging --quiet --norestart
-          if ($LASTEXITCODE -ne 0) { throw "vs_installer modify failed with exit code $LASTEXITCODE" }
-          $pri = Join-Path $vs "MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\Microsoft.Build.Packaging.Pri.Tasks.dll"
-          if (-not (Test-Path $pri)) { throw "PRI task not found: $pri" }
-          Write-Host "MSIX Packaging Tools ready: $pri"
+
+          $priTask = Get-ChildItem -Path (Join-Path $vs 'MSBuild') -Recurse -Filter Microsoft.Build.Packaging.Pri.Tasks.dll -ErrorAction SilentlyContinue |
+            Select-Object -First 1 -ExpandProperty FullName
+          if ($priTask) {
+            Write-Host "PRI MSBuild task already present: $priTask"
+          } else {
+            $vsInstaller = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vs_installer.exe"
+            if (-not (Test-Path $vsInstaller)) { throw "vs_installer.exe not found at $vsInstaller" }
+            Write-Host "Installing MSIX Packaging Tools..."
+            & $vsInstaller modify --installPath $vs --add Microsoft.VisualStudio.ComponentGroup.MSIX.Packaging --quiet --norestart --nocache
+            if ($LASTEXITCODE -ne 0) { throw "vs_installer modify failed with exit code $LASTEXITCODE" }
+            $priTask = Get-ChildItem -Path (Join-Path $vs 'MSBuild') -Recurse -Filter Microsoft.Build.Packaging.Pri.Tasks.dll -ErrorAction SilentlyContinue |
+              Select-Object -First 1 -ExpandProperty FullName
+          }
+          if (-not $priTask) { throw "Microsoft.Build.Packaging.Pri.Tasks.dll still missing under $vs" }
+          Write-Host "PRI MSBuild task ready: $priTask"
 
       - name: Publish WinUI 3 self-contained app
         run: >

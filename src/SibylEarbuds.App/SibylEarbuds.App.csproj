@@ -28,7 +28,9 @@
     VS instance on CI/dev machines that run `dotnet publish` directly.
   -->
   <PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
-    <_AppxTaskBase Condition="Exists('C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage')">C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage</_AppxTaskBase>
+    <_AppxTaskBase Condition="Exists('C:\Program Files\Microsoft Visual Studio\18\Enterprise\MSBuild\Microsoft\VisualStudio\v18.0\AppxPackage')">C:\Program Files\Microsoft Visual Studio\18\Enterprise\MSBuild\Microsoft\VisualStudio\v18.0\AppxPackage</_AppxTaskBase>
+    <_AppxTaskBase Condition="'$(_AppxTaskBase)' == '' And Exists('C:\Program Files\Microsoft Visual Studio\18\Enterprise\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage')">C:\Program Files\Microsoft Visual Studio\18\Enterprise\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage</_AppxTaskBase>
+    <_AppxTaskBase Condition="'$(_AppxTaskBase)' == '' And Exists('C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage')">C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage</_AppxTaskBase>
     <_AppxTaskBase Condition="'$(_AppxTaskBase)' == '' And Exists('C:\Program Files\Microsoft Visual Studio\2022\Professional\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage')">C:\Program Files\Microsoft Visual Studio\2022\Professional\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage</_AppxTaskBase>
     <_AppxTaskBase Condition="'$(_AppxTaskBase)' == '' And Exists('C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage')">C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage</_AppxTaskBase>
     <_AppxTaskBase Condition="'$(_AppxTaskBase)' == '' And Exists('C:\Program Files\Microsoft Visual Studio\2022\BuildTools\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage')">C:\Program Files\Microsoft Visual Studio\2022\BuildTools\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage</_AppxTaskBase>
