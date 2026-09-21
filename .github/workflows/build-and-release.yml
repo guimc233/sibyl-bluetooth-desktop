@@ -104,6 +104,21 @@ jobs:
           -p:PublishSingleFile=false
           -o publish/${{ matrix.rid }}
 
+      - name: Ensure PRI files are published
+        shell: pwsh
+        run: |
+          $binPris = Get-ChildItem -Path src/SibylEarbuds.App/bin -Recurse -Filter "*.pri" -ErrorAction SilentlyContinue
+          foreach ($p in $binPris) {
+            Write-Host "Discovered built PRI in bin: $($p.FullName)"
+            Copy-Item $p.FullName -Destination "publish/${{ matrix.rid }}/$($p.Name)" -Force
+            if ($p.Name -ne "resources.pri") {
+              Copy-Item $p.FullName -Destination "publish/${{ matrix.rid }}/resources.pri" -Force
+            }
+          }
+          $publishedPris = Get-ChildItem -Path "publish/${{ matrix.rid }}" -Filter "*.pri"
+          Write-Host "Published PRI files:"
+          $publishedPris | ForEach-Object { Write-Host " - $($_.Name) ($($_.Length) bytes)" }
+
       - name: Create release archive
         shell: pwsh
         run: Compress-Archive -Path "publish/${{ matrix.rid }}/*" -DestinationPath "${{ matrix.artifact }}.zip"

@@ -20,6 +20,7 @@
     <!-- Unpackaged, self-contained distribution (no MSIX, no runtime install required) -->
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained Condition="'$(RuntimeIdentifier)' != ''">true</WindowsAppSDKSelfContained>
+    <ProjectPriFileName>resources.pri</ProjectPriFileName>
   </PropertyGroup>
 
   <!--
@@ -54,5 +55,19 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
+
+  <!-- Ensure generated PRI file is included in publish output for unpackaged apps -->
+  <Target Name="PublishProjectPri" AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <ResolvedFileToPublish Include="$(ProjectPriFullPath)" Condition="Exists('$(ProjectPriFullPath)')">
+        <RelativePath>resources.pri</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </ResolvedFileToPublish>
+      <ResolvedFileToPublish Include="$(TargetDir)$(TargetName).pri" Condition="Exists('$(TargetDir)$(TargetName).pri')">
+        <RelativePath>$(TargetName).pri</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
 
 </Project>

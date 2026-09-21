@@ -31,11 +31,19 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        MainViewModel = new MainViewModel();
-        _window = new MainWindow();
-        _window.Activate();
+        try
+        {
+            MainViewModel = new MainViewModel();
+            _window = new MainWindow();
+            _window.Activate();
 
-        Debug.WriteLine("SIBYL Earbuds Manager started (WinUI 3 / Windows App SDK).");
+            Debug.WriteLine("SIBYL Earbuds Manager started (WinUI 3 / Windows App SDK).");
+        }
+        catch (Exception ex)
+        {
+            WriteCrashLog("App.OnLaunched", ex);
+            throw;
+        }
     }
 
     private void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)

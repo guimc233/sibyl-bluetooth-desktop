@@ -20,10 +20,13 @@ public sealed partial class MainWindow : Window
     {
         InitializeComponent();
 
+        var rootShell = new ShellPage();
+        Content = rootShell;
+
         Title = "SIBYL MUSIC - 电脑版耳机控制中枢";
         SystemBackdrop = new MicaBackdrop();
         ExtendsContentIntoTitleBar = true;
-        SetTitleBar(RootShell.TitleBarElement);
+        SetTitleBar(rootShell.TitleBarElement);
 
         ResizeToContent();
     }
